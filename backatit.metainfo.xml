@@ -86,6 +86,15 @@
   <url type="bugtracker">https://github.com/akashmony01/BackAtIt/issues</url>
 
   <releases>
+    <release version="1.1" date="2026-08-07">
+      <description>
+        <p>
+          Fixes a stale-state bug that could leave the window showing an
+          out-of-date countdown and refusing to start, and stops the Stop
+          button from cancelling a daily schedule that was not running.
+        </p>
+      </description>
+    </release>
     <release version="1.0" date="2026-08-06">
       <description>
         <p>First release.</p>

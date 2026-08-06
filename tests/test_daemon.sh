@@ -96,6 +96,28 @@ for i in $(seq 30); do [ -f "$PHASE_FILE" ] || break; sleep 0.2; done
 ck "phase cleared"      "$([ -f "$PHASE_FILE" ] && echo yes || echo no)" no
 ck "next_epoch cleared" "$([ -f "$NEXT_EPOCH" ] && echo yes || echo no)" no
 
+echo "=== stale state must never outlive an abandoned walk ==="
+# The bug: an abandoned walk set remaining=-1 before looping, so the cleanup
+# guard on remaining never fired and the phase/countdown files were left
+# behind. The window then believed a reminder was running, showed a stale
+# counter, and turned every press of the button into a Stop.
+echo "walk" > "$PHASE_FILE"
+echo "$(( $(date +%s) - 9999 ))" > "$NEXT_EPOCH"
+echo "22:48" > "$NEXT_FILE"
+rm -f "$MANUAL_FLAG"
+poke_daemon >/dev/null
+for i in $(seq 40); do [ -f "$PHASE_FILE" ] || break; sleep 0.25; done
+ck "stale phase cleared while idle"      "$([ -f "$PHASE_FILE" ] && echo yes || echo no)" no
+ck "stale countdown cleared while idle"  "$([ -f "$NEXT_EPOCH" ] && echo yes || echo no)" no
+
+echo "=== a restarted daemon does not inherit stale state ==="
+stop_daemon
+echo "walk" > "$PHASE_FILE"
+echo "$(( $(date +%s) - 9999 ))" > "$NEXT_EPOCH"
+start_daemon
+for i in $(seq 40); do [ -f "$PHASE_FILE" ] || break; sleep 0.25; done
+ck "startup clears what a crash left" "$([ -f "$PHASE_FILE" ] && echo yes || echo no)" no
+
 stop_daemon
 ck "final daemon count" "$(count)" 0
 exit $fail

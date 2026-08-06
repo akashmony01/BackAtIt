@@ -1287,6 +1287,17 @@ class Window(Gtk.Window):
             subprocess.Popen(["pw-play", path],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    def _in_schedule(self):
+        """Is the daily schedule what is keeping it running right now?
+
+        Asked of lib.sh rather than recomputed here: the rules cover windows
+        that cross midnight and per-day exclusions, and a second copy of that
+        logic would eventually disagree with the daemon's.
+        """
+        return subprocess.call(
+            ["bash", "-c", '. "$1/lib.sh"; load_config; in_schedule', "_", APP_DIR],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+
     def _daemon(self, action):
         """Reuse start_daemon/stop_daemon from lib.sh rather than reimplement
         them. Stopping in particular has to kill the daemon's sleeping child
@@ -1337,7 +1348,10 @@ class Window(Gtk.Window):
         else:
             if os.path.exists(MANUAL_FLAG):
                 os.remove(MANUAL_FLAG)
-            if self.cb_sched.get_active():
+            # Only mute the schedule when the schedule is what would otherwise
+            # keep going. Ending an ad-hoc session hours outside your working
+            # window should not silently cancel that window for the day.
+            if self.cb_sched.get_active() and self._in_schedule():
                 with open(PAUSE_FILE, "w") as fh:
                     fh.write(date.today().isoformat())
 

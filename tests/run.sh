@@ -4,6 +4,11 @@
 # Everything runs against sandboxed copies of the config, statistics and
 # runtime state, so your real settings are never touched.
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+# A terminal inside a snap (an editor, say) exports GTK_PATH and GIO_MODULE_DIR
+# pointing into that snap, which makes GTK fail to load here and every GUI
+# suite collapse for reasons that have nothing to do with the app.
+unset GTK_PATH GIO_MODULE_DIR LD_LIBRARY_PATH GDK_PIXBUF_MODULE_FILE
+
 fails=0
 run() {
     printf '%-26s' "$1"; shift

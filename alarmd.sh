@@ -91,6 +91,9 @@ walk_stage() {
 # ---------------- main loop ----------------
 
 log "daemon started (pid $BASHPID)"
+# A predecessor that was killed rather than stopped may have left published
+# state behind. Nothing is due yet, so start from a clean slate.
+clear_next
 remaining=-1        # -1 means "not counting down"
 warned=0
 
@@ -98,7 +101,13 @@ while :; do
     load_config
 
     if ! is_active; then
-        if [ "$remaining" -ge 0 ]; then
+        # Clear whenever anything is still published, not only on the tick we
+        # went inactive. An abandoned walk already sets remaining to -1 before
+        # looping, so a guard on remaining alone left the phase and countdown
+        # files behind for good — and the settings window then believed a
+        # reminder was still running, showed a stale counter, and turned every
+        # press of the button into a Stop.
+        if [ "$remaining" -ge 0 ] || [ -f "$PHASE_FILE" ]; then
             log "reminder off"
             clear_next
         fi

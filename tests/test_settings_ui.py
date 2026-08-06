@@ -135,6 +135,31 @@ ck("Stop left the unsaved edit alone", st.read_config()["INTERVAL_MIN"], "26")
 ck("and still flags it unsaved", w._dirty, True)
 clear_state(); w._pending = None; w._save()
 
+print("=== Stop must not cancel a schedule that was not running ===")
+# Ending an ad-hoc session outside your working hours should leave today's
+# schedule intact; only mute it when the schedule is what is actually running.
+clear_state(); w._pending = None
+w.cb_sched.set_active(True)
+
+st.Window._in_schedule = lambda self: False          # outside the window
+open(st.MANUAL_FLAG, "w").close()
+open(st.PHASE_FILE, "w").write("work")
+w.refresh_status()
+w.on_toggle_running(None)                            # Stop
+ck("manual switch cleared", os.path.exists(st.MANUAL_FLAG), False)
+ck("today's schedule left alone", st.paused_today(), False)
+
+st.Window._in_schedule = lambda self: True           # inside the window
+clear_state(); w._pending = None
+open(st.MANUAL_FLAG, "w").close()
+open(st.PHASE_FILE, "w").write("work")
+w.refresh_status()
+w.on_toggle_running(None)                            # Stop
+ck("a running schedule is muted for today", st.paused_today(), True)
+
+st.Window._in_schedule = lambda self: False
+clear_state(); w._pending = None; w._save()
+
 print("=== days off round-trip ===")
 for chosen in ([], [5], [6, 7], [1, 3, 5], [1, 2, 3, 4, 5, 6, 7]):
     for i, t in w.day_toggles:

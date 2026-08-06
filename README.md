@@ -23,14 +23,14 @@ Grab the `.deb` from the [**latest release**](https://github.com/akashmony01/Bac
 then:
 
 ```sh
-sudo apt install ./backatit_1.0_all.deb
+sudo apt install ./backatit_1.1_all.deb
 ```
 
 Or straight from the terminal, without opening a browser:
 
 ```sh
-wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_1.0_all.deb
-sudo apt install ./backatit_1.0_all.deb
+wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_1.1_all.deb
+sudo apt install ./backatit_1.1_all.deb
 ```
 
 <sub>That command names version 1.0 explicitly; check
@@ -107,7 +107,7 @@ or build it yourself from a clone:
 
 ```sh
 ./build-deb.sh
-sudo apt install ./backatit_1.0_all.deb
+sudo apt install ./backatit_1.1_all.deb
 ```
 
 Remove it with `sudo apt remove backatit`.
