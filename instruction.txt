@@ -1,0 +1,365 @@
+BREAK REMINDER - USER GUIDE
+===========================
+
+Reminds you to get up and walk while you work, then tells you when to come
+back.
+
+
+FILES
+-----
+~/alarm-app/alarm.sh     the launcher (this is what the icon opens)
+~/alarm-app/settings.py  the settings window
+~/alarm-app/alarmd.sh    the background app that does the timing
+~/alarm-app/alert.py     the full-screen alert window
+~/alarm-app/alertctl.sh  shows one alert on demand (the Test buttons)
+~/alarm-app/lib.sh       shared code
+~/alarm-app/config       your settings
+
+Runtime state lives in /run/user/1000/alarm-app/ and is wiped when you log
+out, so nothing can get "stuck" between sessions. Statistics are kept in
+~/.local/state/break-reminder/stats.tsv and do survive.
+
+
+HOW A CYCLE WORKS
+-----------------
+1. You work for the break interval (default 30 minutes).
+2. Optionally, a notification warns you a couple of minutes ahead.
+3. "Take a break!" appears full-screen with the alarm sounding.
+4. You click "I took my break!" and go for a walk.
+5. After the walk length (default 1 minute) "Walk time is up" appears and
+   keeps nagging until you click "I'm back at work".
+6. The next work block starts.
+
+Step 5 is optional - untick "Tell me when the walk is over".
+
+The countdown restarts when you ANSWER, not when the alert appeared. However
+long an alert sits on screen, you still get a full work block afterwards.
+
+
+THE ALERT WINDOW
+----------------
+It covers the whole screen, stays on top, and cannot be closed by Escape or
+Alt+F4 - only by clicking a button.
+
+The keyboard is ignored completely. Nothing you type can dismiss it. This is
+deliberate: the old version used a normal dialog, and a keystroke landing on
+the focused button killed the alarm the instant it appeared - which is exactly
+what happens when an alarm interrupts you mid-sentence.
+
+On top of that the buttons stay greyed out for 3 seconds, with a small
+"buttons active in 3..." countdown, so a click already on its way cannot hit
+them either.
+
+Buttons on the break alert:
+  I took my break!     dismiss and start the walk
+  Snooze N min         ask again shortly
+  Turn off reminders   see below - deliberately small and out of the way
+
+Buttons on the back-to-work alert:
+  I'm back at work     dismiss, next work block begins
+  Turn off reminders
+
+"Turn off reminders" does not destroy your setup. It clears the manual switch,
+and if a schedule is running it mutes it for the REST OF TODAY only. Tomorrow
+runs as configured, and "Start reminders" in the settings window starts it
+again immediately.
+
+
+WHAT THE ALERTS SAY
+-------------------
+The heading and the message on both alerts are yours to change, on the Alerts
+tab. Press "Test break alert" to see your wording on the real thing.
+
+A message can run to more than one line: type a line break in the box and it
+appears in the alert. Anything is safe to type - quotes, apostrophes, brackets
+and symbols are all treated as plain text.
+
+Leave a heading empty and it falls back to the built-in wording rather than
+showing you a blank alert.
+
+
+SOUND
+-----
+The break alarm repeats until you answer, then goes quiet after 90 seconds
+while the window stays put.
+
+The back-to-work alarm never gives up. It buzzes for a minute, falls silent
+for 2 minutes, buzzes again, waits 4 minutes, then 8, and so on - each silence
+twice as long as the last, up to the cap you set ("Nag me at most every ...
+minutes", default 15). So it is still going when you sit back down, without
+blaring non-stop the whole time you are away.
+
+The two alerts use different sounds so you can tell them apart from another
+room.
+
+
+SETTINGS
+--------
+Open "Break Reminder" (desktop icon, or search in Activities).
+
+THE PANEL AT THE TOP tells you what is happening right now:
+
+    Running                                        13m 57s
+    Next break in
+    [ Stop reminders ]   Today: 3 taken . 1 snoozed . 0 skipped
+
+The big number counts down live, so you can tell at a glance that the app is
+actually running. It shows either the time until your next break, or - during
+a walk - the time left of the walk. It reads "Alert on screen" while an alert
+is waiting for you, and "Not running" if the background app is stopped.
+
+THE BUTTON beside it is the on/off switch:
+
+  Start reminders   begin now, and clear any "off for today"
+  Stop reminders    stop now (a running schedule is muted for the rest of
+                    today, and resumes tomorrow)
+
+Start also saves whatever you have changed, so it always runs with the
+numbers you can see - the background app works from the config file, so an
+unsaved interval would otherwise be ignored. Stop does not save: an unsaved
+edit stays unsaved, and the "Unsaved changes" note stays up.
+
+Both take effect immediately. The button changes the moment you press it, and
+the background app is nudged to notice at once rather than at its next check.
+
+THE WINDOW has the tabs at the top left and the live state at the top right:
+
+    [ Timing ][ When it runs ][ Alerts ][ Stats ][ Guide ]    * 17m 19s [Stop]
+
+The counter answers "is this actually on?" at a glance - if it is ticking
+down, a break is coming. A dash means nothing is counting. Hover the counter
+and a tooltip spells the state out in words: running, alert on screen, off for
+today, or not running. The button beside it starts and stops the reminder.
+
+THE TABS hold everything else, so only one group is on screen at a time:
+
+  Timing         how long you work, the walk, and the warning beforehand
+  When it runs   the daily schedule, days off, away detection, login start
+  Alerts         the two sounds and how the alert window behaves
+  Stats          how many breaks you have actually taken
+  Guide          how the whole thing works, and how to set it up
+
+Each group is a card. Every setting shows its name above the field, the field
+itself across the full width of the card, and a line underneath saying what it
+does. Anything belonging to a switched-off option is greyed out - name, field
+and explanation together - so a tab only offers what is actually in effect.
+
+Inside a tab the cards rearrange to fit the window: widen it and they form two
+columns, wider still and three; narrow it and they stack into one and scroll.
+
+  under 1000px    one column
+  1000 to 1456    two columns
+  1456 and up     three columns
+
+The window takes its colours from your desktop theme, so it matches whether
+you run a light or a dark one.
+
+
+STATS
+-----
+The Stats tab charts the last 7 or 30 days: one row per day, with the bar
+running left to right and split into breaks taken (green), snoozed (amber),
+and skipped because you were already away (grey). The number on the right is
+the day's total; hover a row for the exact breakdown.
+
+The rows are laid out horizontally so the chart is the same width whichever
+period you pick - switching to 30 days makes the list longer, not the window
+wider. The bars stretch to fill the column, so widening the window makes them
+longer and easier to compare. A day with no breaks still shows an empty track,
+so it reads as a genuine zero rather than as missing data.
+
+Underneath is the total for the period and how many breaks you averaged on the
+days you were actually at the desk - days you were away do not drag the
+average down.
+
+WHERE THE FIGURES LIVE
+
+  ~/.local/state/break-reminder/stats.tsv
+
+One line per event, "date<tab>event". It survives logging out and is not
+touched by anything else in the app. The path is also shown on the Stats tab.
+
+CLEARING IT: the "Clear history" button on the Stats tab empties the file and
+every day goes back to zero. A copy is kept alongside as stats.tsv.bak, so it
+is recoverable if you press it by mistake.
+
+To see what a full history looks like without waiting a month:
+
+  ./demo-stats.sh on       swap in 30 days of made-up figures
+  ./demo-stats.sh off      put your real ones back
+  ./demo-stats.sh status   say which is in place
+
+"on" copies your real file to stats.tsv.real first and will not overwrite that
+copy, so running it twice cannot lose anything.
+
+
+  How often
+    Break every ... minutes     length of a work block, default 30
+    Snooze length ... minutes   how long Snooze postpones, default 5
+
+  After the break
+    Tell me when the walk is over   turn the second stage on or off
+    Break length ... minutes        how long the break itself is, default 1
+    Nag me at most every ... min    cap on the back-to-work silence, default 15
+
+  Before the break
+    Warn me that a break is coming  heads-up notification
+    Warn me this far ahead          how much notice, default 2 minutes
+
+  When you are away
+    Skip the break if I am already away   see AWAY DETECTION below
+    Count me away after ... minutes       default 5
+
+  Daily schedule
+    Run automatically between set hours   see SCHEDULE below
+    Between these hours                   24-hour clock, like 09:00 and 18:30
+    Days off                              switch on any days to skip
+
+  Alerts
+    Break heading / Break message      what the "get up" alert says
+    Back-to-work heading / message     what the "come back" alert says
+    Break sound / Back-to-work sound   any .oga / .wav / .mp3 / .flac
+                                       (the small play button tries one out)
+    Keep the break alarm sounding      repeat until you answer
+    Full-screen alerts                 cover the screen; leave this on
+    Test break alert                   show the real alert right now
+    Test back-to-work alert            show the nagging alert right now
+
+  Startup
+    Start automatically when I log in  keep this on if you use the schedule
+    Quit background app                stop everything until you open this
+                                       window again
+
+The name sits at the top left of the window, the tabs under it, and the
+counter and Start/Stop button at the top right.
+
+At the bottom left the window tells you where it stands:
+
+  Unsaved changes     you have altered something that is not written yet
+  * Saved at 19:11    it has just been written; this clears itself shortly
+
+At the bottom right:
+
+  Close            shuts the window. If anything is unsaved it asks first,
+                   offering Back, Discard, or Save and close.
+  Save             writes your changes and leaves the window open
+  Save and close   writes them and shuts the window in one go
+
+If a schedule time is not a valid clock time, saving says so and keeps the old
+one - and "Save and close" leaves the window open rather than closing over the
+top of the complaint.
+
+
+BREAK LENGTH
+------------
+Every "... minutes" box accepts fractions, in steps of half a minute:
+
+  0.5  =  30 seconds
+  1.5  =  90 seconds
+  30   =  30 minutes  (default)
+
+The allowed range is 0.5 to 240 minutes. When the interval is under two
+minutes the app shows the next break time with seconds (19:55:21).
+
+
+AWAY DETECTION
+--------------
+With "Skip the break if I am already away" ticked, the app checks how long it
+has been since you touched the mouse or keyboard. If that is longer than 5
+minutes when a break falls due, you are clearly already having one, so the
+alarm stays quiet and the timer simply starts again. It is counted as
+"skipped" in today's tally.
+
+Change the 5 minutes with "Count me away after" in the settings window.
+
+
+SCHEDULE
+--------
+Tick "Run automatically between set hours" and set a start and end time.
+
+Inside that window the reminder runs on its own - you do NOT have to open the
+app, and you do not have to remember to switch it on. Outside the window it
+stays quiet.
+
+Windows that cross midnight work too, e.g. 22:00 to 02:00.
+
+DAYS OFF is a row of seven buttons - switch on any combination you like, not
+just the weekend. Fridays only, Monday/Wednesday/Friday, or nothing at all.
+Leave them all off and the schedule runs every day.
+
+For a window that crosses midnight, a shift belongs to the day it began: a
+Friday-night shift runs through to Saturday morning even with Saturday off,
+and Saturday's own shift is then skipped.
+
+To turn it off, untick the box and press Save. "Start reminders" works
+independently of the schedule: it runs the reminder even outside the
+scheduled hours.
+
+For the schedule to fire, the background app must be running, which is why
+"Start automatically when I log in" should stay ticked.
+
+
+TROUBLESHOOTING
+---------------
+Nothing happens at all
+  Open the app and read the panel at the top. If the counter is ticking, it
+  is running. If it says "Not running" or "Off", press "Start reminders".
+  If it says "Off for the rest of today", "Start reminders" clears that too.
+
+Check what the background app is doing:
+  cat /run/user/1000/alarm-app/daemon.log
+
+Force reset (only if something is genuinely stuck):
+  pkill -f alarmd.sh
+  rm -rf /run/user/1000/alarm-app
+  Then open the app again.
+
+No sound
+  Test with:  pw-play /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga
+  Check the system volume is not muted.
+
+The alert is not full screen
+  Make sure "Full-screen alerts" is ticked. The alert is drawn by alert.py
+  rather than by yad, because yad's own full-screen mode does not work on
+  GNOME/Wayland here - it produced a small window instead.
+
+
+INSTALLING IT ELSEWHERE
+----------------------
+This is a Linux desktop app. It needs:
+
+  bash, python3, python3-gi with GTK 3   the window and the alert
+  pw-play (pipewire) or paplay or aplay  the sound
+  notify-send (libnotify)                the heads-up notifications
+  gdbus (glib)                           away detection, GNOME only
+
+It is written against the freedesktop desktop standards, so it should run on
+GNOME, KDE, XFCE, Cinnamon and the rest. Two things are GNOME-specific and
+degrade quietly elsewhere:
+
+  - Away detection asks GNOME's idle monitor. Off GNOME it reads zero, which
+    means "you are here", so breaks always fire and nothing is skipped.
+  - The full-screen alert prefers XWayland so it can stay on top. Under other
+    compositors it still goes full screen.
+
+It will NOT run on Windows as it stands. The daemon is bash, sound goes
+through PipeWire, away detection goes through D-Bus, and starting at login
+uses ~/.config/autostart. Porting would mean rewriting those four pieces, not
+repackaging.
+
+
+NOTES
+-----
+Only one background app can run at a time; extra launches exit quietly, so
+you cannot end up with two alarms firing at once.
+
+The old WEEKDAYS_ONLY setting was replaced by DAYS_OFF (a list like "6,7").
+An existing WEEKDAYS_ONLY=1 is carried over automatically the first time.
+
+Settings not in the window can be changed in ~/alarm-app/config:
+  BUZZ_ON_MIN          how long each back-to-work buzz lasts (default 1)
+  BUZZ_GAP_START_MIN   the first silence between buzzes (default 2)
+  GRACE_SEC            how long the alert buttons stay greyed out (default 3)
+
+Editing that file by hand is safe: the settings window changes values in
+place and leaves your comments and any hand-set extras alone.

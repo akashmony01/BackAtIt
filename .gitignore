@@ -1,0 +1,11 @@
+# Built package — rebuild it with ./build-deb.sh
+*.deb
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Editor and OS noise
+*~
+.*.swp
+.DS_Store

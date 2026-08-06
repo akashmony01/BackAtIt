@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metadata. This is the file software centres read: GNOME Software,
+  KDE Discover, Flathub and the rest index the summary, description and
+  keywords below. It is the closest thing a desktop app has to SEO — get the
+  wording right here and people searching "back pain", "posture" or "pomodoro"
+  find it.
+
+  Validate before publishing:  appstreamcli validate backatit.metainfo.xml
+-->
+<component type="desktop-application">
+  <id>io.github.backatit.BackAtIt</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>BackAtIt</name>
+  <summary>Get up, walk it off, and actually get back at it</summary>
+
+  <developer id="io.github.backatit">
+    <name>akashmony01</name>
+  </developer>
+
+  <description>
+    <p>
+      BackAtIt started with back pain. Sitting through long stretches of work
+      without moving does that, and every break reminder I tried was far too
+      easy to wave away — a small notification in the corner, dismissed
+      without even reading it, and another hour gone.
+    </p>
+    <p>
+      So this one is harder to ignore. When a break is due it takes over the
+      whole screen and sounds an alarm, and it ignores the keyboard
+      completely, so carrying on typing cannot dismiss it by accident. You get
+      up because it is genuinely easier to get up than to argue with it.
+    </p>
+    <p>
+      The other half is the part most timers forget: coming back. Once your
+      break is over a second alert calls you back to the desk and keeps
+      nagging — a burst of alarm, then a longer and longer silence — until you
+      answer it. No more twenty-minute five-minute breaks.
+    </p>
+    <p>Everything about it bends to how you actually work:</p>
+    <ul>
+      <li>Break interval, break length and snooze, all down to half a minute</li>
+      <li>Both alerts say whatever you want them to say</li>
+      <li>Runs on a daily schedule, with any combination of days off — not just weekends</li>
+      <li>Stays quiet when you are already away instead of alarming an empty room</li>
+      <li>Your own choice of sound for each alert</li>
+      <li>A tally of the breaks you actually took, over the last week or month</li>
+    </ul>
+    <p>
+      Written for anyone whose back, eyes, wrists or posture are paying for
+      their screen time — and for anyone whose pomodoro timer has quietly
+      become part of the furniture.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">backatit.desktop</launchable>
+
+  <categories>
+    <category>Utility</category>
+    <category>Office</category>
+  </categories>
+
+  <!-- What people actually type when they are looking for this. -->
+  <keywords>
+    <keyword>break</keyword>
+    <keyword>timer</keyword>
+    <keyword>reminder</keyword>
+    <keyword>pomodoro</keyword>
+    <keyword>back pain</keyword>
+    <keyword>posture</keyword>
+    <keyword>RSI</keyword>
+    <keyword>eye strain</keyword>
+    <keyword>stretch</keyword>
+    <keyword>stand up</keyword>
+    <keyword>health</keyword>
+    <keyword>productivity</keyword>
+    <keyword>workrave</keyword>
+    <keyword>desk job</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1"/>
+
+  <url type="homepage">https://example.com/backatit</url>
+  <url type="bugtracker">https://example.com/backatit/issues</url>
+
+  <releases>
+    <release version="1.0" date="2026-08-06">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
