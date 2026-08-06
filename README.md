@@ -145,7 +145,6 @@ app changes values in place and leaves your comments alone.
 | `./make-icons.sh` | regenerate icon sizes from `logo.png` |
 | `./demo-stats.sh on` | fill the stats page with sample data (`off` restores) |
 | `./purge.sh --dry-run` | list every trace of the app on the machine |
-| `./tests/run.sh` | run the test suite |
 
 Your name, email and version live in `about.conf`, which the About card, the
 package metadata and the licence all read from.

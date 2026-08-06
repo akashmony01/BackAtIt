@@ -82,8 +82,8 @@
 
   <content_rating type="oars-1.1"/>
 
-  <url type="homepage">https://example.com/backatit</url>
-  <url type="bugtracker">https://example.com/backatit/issues</url>
+  <url type="homepage">https://github.com/akashmony01/BackAtIt</url>
+  <url type="bugtracker">https://github.com/akashmony01/BackAtIt/issues</url>
 
   <releases>
     <release version="1.0" date="2026-08-06">
