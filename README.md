@@ -10,6 +10,7 @@ A break reminder for Linux that is genuinely hard to ignore — and, unusually,
 one that also tells you when the break is over.
 
 [![Latest release](https://img.shields.io/github/v/release/akashmony01/BackAtIt?label=download&style=for-the-badge)](https://github.com/akashmony01/BackAtIt/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/akashmony01/BackAtIt/total?style=for-the-badge)](https://github.com/akashmony01/BackAtIt/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
 </div>
@@ -31,6 +32,10 @@ Or straight from the terminal, without opening a browser:
 wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_1.0_all.deb
 sudo apt install ./backatit_1.0_all.deb
 ```
+
+<sub>That command names version 1.0 explicitly; check
+[releases](https://github.com/akashmony01/BackAtIt/releases/latest) for the
+current filename if a newer one is out.</sub>
 
 Works on Debian, Ubuntu, Mint and anything else `apt`-based. `apt` pulls in
 GTK and the other dependencies itself. Remove it later with

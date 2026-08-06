@@ -124,5 +124,10 @@ fakeroot dpkg-deb --build "$STAGE" "$OUT" >/dev/null
 echo "Built $OUT"
 echo "Maintainer: $MAINTAINER"
 echo
+if [ "$VERSION" != "1.0" ]; then
+    echo "Note: the wget line in README.md still names backatit_1.0_all.deb."
+    echo "      Update it, or attach this file to the release under that name."
+    echo
+fi
 echo "Install it with:  sudo apt install $OUT"
 echo "Remove it with:   sudo apt remove $PKG"
