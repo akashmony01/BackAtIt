@@ -182,9 +182,21 @@ app changes values in place and leaves your comments alone.
 | `./make-icons.sh` | regenerate icon sizes from `logo.png` |
 | `./demo-stats.sh on` | fill the stats page with sample data (`off` restores) |
 | `./purge.sh --dry-run` | list every trace of the app on the machine |
+| `./tests/run.sh` | run the test suite (10 suites, sandboxed) |
 
 Your name, email and version live in `about.conf`, which the About card, the
 package metadata and the licence all read from.
+
+### Tests
+
+```sh
+./tests/run.sh
+```
+
+Ten suites covering the schedule and days-off logic, config parsing and
+quoting, the daemon's lifecycle, the alert window and its buzzer, and the
+settings window. They run against sandboxed copies of the config, statistics
+and runtime state, so your real settings are never touched.
 
 ### Layout
 
