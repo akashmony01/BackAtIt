@@ -9,7 +9,36 @@
 A break reminder for Linux that is genuinely hard to ignore — and, unusually,
 one that also tells you when the break is over.
 
+[![Latest release](https://img.shields.io/github/v/release/akashmony01/BackAtIt?label=download&style=for-the-badge)](https://github.com/akashmony01/BackAtIt/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
+
 </div>
+
+---
+
+## Download
+
+Grab the `.deb` from the [**latest release**](https://github.com/akashmony01/BackAtIt/releases/latest),
+then:
+
+```sh
+sudo apt install ./backatit_1.0_all.deb
+```
+
+Or straight from the terminal, without opening a browser:
+
+```sh
+wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_1.0_all.deb
+sudo apt install ./backatit_1.0_all.deb
+```
+
+Works on Debian, Ubuntu, Mint and anything else `apt`-based. `apt` pulls in
+GTK and the other dependencies itself. Remove it later with
+`sudo apt remove backatit`.
+
+Not on a `.deb` distro, or would rather build it yourself? See
+[Install](#install) below — it is a shell and Python app, so there is nothing
+to compile.
 
 ---
 
@@ -67,6 +96,9 @@ Everything about it bends to how you actually work.
 ## Install
 
 ### From the package (Debian, Ubuntu, Mint)
+
+Either download it from [releases](https://github.com/akashmony01/BackAtIt/releases/latest),
+or build it yourself from a clone:
 
 ```sh
 ./build-deb.sh
