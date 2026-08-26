@@ -64,7 +64,7 @@ Icon=$ICON_NAME
 Terminal=false
 # Ties a running window back to this entry, so the dock shows our icon.
 StartupWMClass=backatit
-Categories=Utility;Office;
+Categories=Utility;
 Keywords=break;timer;health;posture;pomodoro;reminder;rsi;stretch;eyes;
 StartupNotify=true
 EOF
@@ -91,25 +91,49 @@ Description: Reminds you to get up and walk while you work
  days off. It keeps a tally of the breaks you actually took.
 EOF
 
-cat > "$STAGE/DEBIAN/prerm" <<EOF
-#!/bin/sh
-set -e
+# Stopping a running daemon is worth explaining, because getting it wrong is
+# invisible: the upgrade succeeds, the new files land, and the user carries on
+# being served by a daemon that read the OLD lib.sh into memory at startup and
+# will keep running it until the process dies. Nothing looks broken; the new
+# behaviour simply never appears.
+#
+# The trap is XDG_RUNTIME_DIR. lib.sh keeps its pid file under it, and `su`
+# here builds a fresh environment without one (pam_systemd is not in su's
+# stack), so lib.sh fell back to a /tmp path the real session never used,
+# found no pid file, and returned happily having stopped nothing. So set it
+# explicitly from the user's uid.
+stop_daemons_snippet() {
+    cat <<EOF
 if [ -r /usr/lib/$PKG/lib.sh ]; then
     for home in /home/*; do
         [ -d "\$home" ] || continue
         user=\$(basename "\$home")
-        id "\$user" >/dev/null 2>&1 || continue
-        su - "\$user" -c ". /usr/lib/$PKG/lib.sh 2>/dev/null; stop_daemon" >/dev/null 2>&1 || true
+        uid=\$(id -u "\$user" 2>/dev/null) || continue
+        [ -d "/run/user/\$uid" ] || continue
+        su "\$user" -c "XDG_RUNTIME_DIR=/run/user/\$uid; export XDG_RUNTIME_DIR; . /usr/lib/$PKG/lib.sh 2>/dev/null; stop_daemon" >/dev/null 2>&1 || true
     done
 fi
+EOF
+}
+
+cat > "$STAGE/DEBIAN/prerm" <<EOF
+#!/bin/sh
+set -e
+$(stop_daemons_snippet)
 exit 0
 EOF
 chmod 0755 "$STAGE/DEBIAN/prerm"
 
+# The same sweep runs again here, and that is not redundant. On an upgrade it
+# is the OLD package's prerm that dpkg runs — so a release that fixes a broken
+# prerm cannot fix the upgrade INTO itself, only the one after. Doing it in
+# postinst as well means this version can clear a stale daemon left behind by
+# any earlier one, and the files it will restart from are already in place.
 cat > "$STAGE/DEBIAN/postinst" <<EOF
 #!/bin/sh
 set -e
 if [ "\$1" = configure ]; then
+$(stop_daemons_snippet)
     command -v update-desktop-database >/dev/null 2>&1 &&
         update-desktop-database -q /usr/share/applications || true
     command -v gtk-update-icon-cache >/dev/null 2>&1 &&

@@ -90,6 +90,18 @@ if [ -n "$missing" ]; then
 fi
 
 # ---------------- install ----------------
+# Stop a daemon still running the copy we are about to overwrite. A daemon is
+# a bash process that sourced lib.sh once at startup and keeps those functions
+# in memory for life, so installing over it changes nothing it does — the
+# upgrade looks like it worked and the new behaviour simply never appears.
+# Uninstall already does this; install has to as well.
+if [ -r "$LIBDIR/lib.sh" ]; then
+    if bash -c ". '$LIBDIR/lib.sh'; daemon_running" 2>/dev/null; then
+        bash -c ". '$LIBDIR/lib.sh'; stop_daemon" 2>/dev/null || true
+        echo "  stopped the running background app (open BackAtIt to start the new one)"
+    fi
+fi
+
 echo "Installing to $LIBDIR"
 install -d "$LIBDIR" "$BINDIR" "$APPDIR" "$METADIR"
 for f in $APP_FILES; do
@@ -136,7 +148,7 @@ Icon=$ICON_NAME
 Terminal=false
 # Ties a running window back to this entry, so the dock shows our icon.
 StartupWMClass=backatit
-Categories=Utility;Office;
+Categories=Utility;
 Keywords=break;timer;health;posture;pomodoro;reminder;rsi;stretch;eyes;
 StartupNotify=true
 EOF
