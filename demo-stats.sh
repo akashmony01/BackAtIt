@@ -18,23 +18,27 @@ mkdir -p "$STATS_DIR"
 generate() {
     # Fixed seed, so the same demo history comes back every time.
     RANDOM=20260806
-    local i d dow taken snoozed skipped n
+    local i d dow taken snoozed skipped cut n
     for i in $(seq 29 -1 0); do
         d=$(date -d "-$i days" +%F)
         dow=$(date -d "-$i days" +%u)
         if [ "$dow" -ge 6 ]; then
             # Weekends: mostly nothing, the odd bit of catching up.
-            taken=$(( RANDOM % 4 )); snoozed=0; skipped=$(( RANDOM % 2 ))
+            taken=$(( RANDOM % 4 )); snoozed=0; skipped=$(( RANDOM % 2 )); cut=0
         elif [ $(( RANDOM % 11 )) -eq 0 ]; then
-            taken=0; snoozed=0; skipped=0          # a day away from the desk
+            taken=0; snoozed=0; skipped=0; cut=0    # a day away from the desk
         else
             taken=$(( 6 + RANDOM % 9 ))
             snoozed=$(( RANDOM % 4 ))
             skipped=$(( RANDOM % 3 ))
+            # Locked breaks unlocked early. Deliberately the rarest of the
+            # four, or the chart stops looking like anyone's real week.
+            cut=$(( RANDOM % 5 == 0 ? 1 : 0 ))
         fi
         for n in $(seq "$taken");   do printf '%s\ttaken\n%s\tback\n' "$d" "$d"; done
         for n in $(seq "$snoozed"); do printf '%s\tsnoozed\n' "$d"; done
         for n in $(seq "$skipped"); do printf '%s\tskipped\n' "$d"; done
+        for n in $(seq "$cut");     do printf '%s\tcut_short\n' "$d"; done
     done
 }
 

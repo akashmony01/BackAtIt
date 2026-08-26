@@ -1,5 +1,5 @@
-BREAK REMINDER - USER GUIDE
-===========================
+BACKATIT - USER GUIDE
+=====================
 
 Reminds you to get up and walk while you work, then tells you when to come
 back.
@@ -7,17 +7,28 @@ back.
 
 FILES
 -----
-~/alarm-app/alarm.sh     the launcher (this is what the icon opens)
-~/alarm-app/settings.py  the settings window
-~/alarm-app/alarmd.sh    the background app that does the timing
-~/alarm-app/alert.py     the full-screen alert window
-~/alarm-app/alertctl.sh  shows one alert on demand (the Test buttons)
-~/alarm-app/lib.sh       shared code
-~/alarm-app/config       your settings
+The program itself is installed together, in one directory:
 
-Runtime state lives in /run/user/1000/alarm-app/ and is wiped when you log
-out, so nothing can get "stuck" between sessions. Statistics are kept in
-~/.local/state/break-reminder/stats.tsv and do survive.
+  /usr/lib/backatit/          from the .deb
+  ~/.local/lib/backatit/      from ./install.sh
+  /usr/local/lib/backatit/    from sudo ./install.sh --system
+
+  alarm.sh      the launcher (this is what the icon opens)
+  settings.py   the settings window
+  alarmd.sh     the background app that does the timing
+  alert.py      the full-screen alert window
+  alertctl.sh   shows one alert on demand (the Test buttons)
+  lib.sh        shared code
+
+Your own files live in the standard per-user places, and installing,
+upgrading or removing the program never touches them:
+
+  ~/.config/backatit/config              your settings
+  ~/.local/state/backatit/stats.tsv      your statistics
+
+Runtime state lives in $XDG_RUNTIME_DIR/backatit/ (usually
+/run/user/1000/backatit/) and is wiped when you log out, so nothing can get
+"stuck" between sessions.
 
 
 HOW A CYCLE WORKS
@@ -46,9 +57,12 @@ deliberate: the old version used a normal dialog, and a keystroke landing on
 the focused button killed the alarm the instant it appeared - which is exactly
 what happens when an alarm interrupts you mid-sentence.
 
-On top of that the buttons stay greyed out for 3 seconds, with a small
-"buttons active in 3..." countdown, so a click already on its way cannot hit
-them either.
+On top of that, any button that would cost you something stays greyed out for
+3 seconds, with a small "buttons active in 3..." countdown, so a click already
+on its way cannot hit it either. That covers "I took my break!", "Snooze" and
+"Turn off reminders". "I'm back at work" and the hold-to-unlock bar respond
+immediately - a stray click on those costs nothing, and the unlock bar needs a
+sustained hold anyway.
 
 Buttons on the break alert:
   I took my break!     dismiss and start the walk
@@ -95,7 +109,7 @@ room.
 
 SETTINGS
 --------
-Open "Break Reminder" (desktop icon, or search in Activities).
+Open "BackAtIt" (desktop icon, or search in Activities).
 
 THE PANEL AT THE TOP tells you what is happening right now:
 
@@ -174,7 +188,7 @@ average down.
 
 WHERE THE FIGURES LIVE
 
-  ~/.local/state/break-reminder/stats.tsv
+  ~/.local/state/backatit/stats.tsv
 
 One line per event, "date<tab>event". It survives logging out and is not
 touched by anything else in the app. The path is also shown on the Stats tab.
@@ -262,6 +276,52 @@ The allowed range is 0.5 to 240 minutes. When the interval is under two
 minutes the app shows the next break time with seconds (19:55:21).
 
 
+LOCKING THE SCREEN FOR THE WHOLE BREAK
+--------------------------------------
+Timing -> "Lock the screen for the whole break" turns the alert from something
+you dismiss into something you wait out.
+
+With it on there is no "I took my break!" to press. The screen is locked the
+moment the alarm sounds and the break starts counting down there and then, so
+there is no gap in which you could quietly sit back down. Your other monitors
+go dark too, unless you untick "Cover every monitor".
+
+While the break runs the window shows how long is left and a bar filling as it
+goes. The mouse and keyboard belong to the alert, so Super and Alt-Tab stop
+working. Clicking still works normally - the lock points input AT the alert,
+it does not switch your mouse off.
+
+Two ways out:
+
+  Snooze              one click. Abandons the break and puts the next one off
+                      by your snooze length. Counted as a snooze.
+  Turn off reminders  stops reminders for the rest of today, as everywhere
+                      else in the app.
+  Hold to unlock      hold the button down for five seconds and the machine is
+                      yours again. This does NOT end your day - the next break
+                      arrives exactly when it would have. It is recorded as a
+                      break cut short, so the tally stays honest.
+
+When the break time is up the mouse and keyboard are released and the alert
+becomes the ordinary back-to-work one, buzzing until you answer it.
+
+There is also a safety timer. If the app ever froze mid-break it would let go
+of your mouse and keyboard anyway, rather than leave you stuck - the
+hold-to-unlock button only helps while the app is still responding.
+
+This needs the walk stage: the lock ends when the walk is up, so with "Tell me
+when the walk is over" unticked there is nothing for it to end at, and both
+tick boxes grey out.
+
+Press "Test break alert" on the Alerts tab to see the real locked window with
+a ten-second stand-in break.
+
+It works best under X11 or XWayland, which is what the app asks for. In a
+session with no X server at all the claim on the mouse and keyboard is
+refused, and the lock falls back to what an ordinary alert does: covering the
+screen and ignoring the keyboard.
+
+
 AWAY DETECTION
 --------------
 With "Skip the break if I am already away" ticked, the app checks how long it
@@ -307,11 +367,11 @@ Nothing happens at all
   If it says "Off for the rest of today", "Start reminders" clears that too.
 
 Check what the background app is doing:
-  cat /run/user/1000/alarm-app/daemon.log
+  cat /run/user/1000/backatit/daemon.log
 
 Force reset (only if something is genuinely stuck):
   pkill -f alarmd.sh
-  rm -rf /run/user/1000/alarm-app
+  rm -rf /run/user/1000/backatit
   Then open the app again.
 
 No sound
@@ -356,10 +416,15 @@ you cannot end up with two alarms firing at once.
 The old WEEKDAYS_ONLY setting was replaced by DAYS_OFF (a list like "6,7").
 An existing WEEKDAYS_ONLY=1 is carried over automatically the first time.
 
-Settings not in the window can be changed in ~/alarm-app/config:
+Settings not in the window can be changed in ~/.config/backatit/config:
   BUZZ_ON_MIN          how long each back-to-work buzz lasts (default 1)
   BUZZ_GAP_START_MIN   the first silence between buzzes (default 2)
-  GRACE_SEC            how long the alert buttons stay greyed out (default 3)
+  GRACE_SEC            how long the alert buttons stay greyed out (default 3;
+                       0 turns the wait off entirely)
+  LOCK_HOLD_SEC        how long the unlock button must be held (default 5)
+  LOCK_ALARM_SEC       how long the alarm sounds on a locked break (default 10)
+  LOCK_RELEASE_MARGIN  how long past the end of a locked break the input lock
+                       gives up on its own, if the app has wedged (default 120)
 
 Editing that file by hand is safe: the settings window changes values in
 place and leaves your comments and any hand-set extras alone.
