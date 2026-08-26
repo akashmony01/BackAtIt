@@ -112,7 +112,8 @@ CONFIG_KEYS="INTERVAL_MIN SNOOZE_MIN SOUND LOOP_SOUND FULLSCREEN GRACE_SEC
 WALK_ENABLED WALK_MIN WALK_SOUND BUZZ_ON_MIN BUZZ_GAP_START_MIN BUZZ_GAP_CAP_MIN
 WARN_ENABLED WARN_LEAD_MIN IDLE_SKIP IDLE_MIN SCHEDULE_ENABLED SCHEDULE_START
 SCHEDULE_END DAYS_OFF WEEKDAYS_ONLY BREAK_TITLE BREAK_MESSAGE WALK_TITLE
-WALK_MESSAGE"
+WALK_MESSAGE LOCK_BREAK LOCK_ALL_MONITORS LOCK_HOLD_SEC
+LOCK_ALARM_SEC LOCK_RELEASE_MARGIN"
 
 # Read the config by parsing it, NOT by sourcing it.
 #
@@ -151,7 +152,9 @@ load_config() {
     SOUND="$DEFAULT_SOUND"
     LOOP_SOUND=1          # keep the sound going until the alert is dismissed
     FULLSCREEN=1          # take over the screen so the alert cannot hide behind windows
-    GRACE_SEC=3           # buttons stay dead this long, so typing cannot dismiss it
+    GRACE_SEC=3           # a click already in flight when the alert appears must
+                          # not land on a button; typing is handled separately,
+                          # by swallowing every key. 0 disables it.
 
     # What the alerts actually say. "\n" in a message becomes a line break.
     BREAK_TITLE="Take a break!"
@@ -165,6 +168,14 @@ load_config() {
     BUZZ_ON_MIN=1         # length of each back-to-work buzz
     BUZZ_GAP_START_MIN=2  # first silence between buzzes; doubles each round
     BUZZ_GAP_CAP_MIN=15   # ...but never grows past this
+
+    LOCK_BREAK=0          # hold the screen for the whole break, not just the alert
+    LOCK_ALL_MONITORS=1   # ...and blank the other screens too, or the lock leaks
+    LOCK_HOLD_SEC=5       # how long the unlock button must be held down
+    LOCK_ALARM_SEC=10     # a short burst; nothing silences it, and on a one
+                          # minute break the usual 90 would be the whole break
+    LOCK_RELEASE_MARGIN=120  # how long past the end of a locked break the input
+                          # lock lets go on its own, if this app has wedged
 
     WARN_ENABLED=1        # heads-up notification before a break lands
     WARN_LEAD_MIN=2
@@ -195,6 +206,17 @@ load_config() {
     valid_num "$WARN_LEAD_MIN"      "$MIN_MINUTES" "$MAX_MINUTES" || WARN_LEAD_MIN=2
     valid_num "$IDLE_MIN"           "$MIN_MINUTES" "$MAX_MINUTES" || IDLE_MIN=5
     [[ "$GRACE_SEC" =~ ^[0-9]+$ ]] && [ "$GRACE_SEC" -le 30 ] || GRACE_SEC=3
+    # A hold of zero would make the unlock button a single click, which is the
+    # one thing it must never be; a huge one would make it unusable.
+    [[ "$LOCK_HOLD_SEC" =~ ^[0-9]+$ ]] &&
+        [ "$LOCK_HOLD_SEC" -ge 1 ] && [ "$LOCK_HOLD_SEC" -le 30 ] || LOCK_HOLD_SEC=5
+    [[ "$LOCK_ALARM_SEC" =~ ^[0-9]+$ ]] &&
+        [ "$LOCK_ALARM_SEC" -ge 1 ] && [ "$LOCK_ALARM_SEC" -le 300 ] || LOCK_ALARM_SEC=10
+    # The safety net must outlast a slow-but-alive app, or it would cut a
+    # working lock loose part way through the break it is holding.
+    [[ "$LOCK_RELEASE_MARGIN" =~ ^[0-9]+$ ]] &&
+        [ "$LOCK_RELEASE_MARGIN" -ge 10 ] && [ "$LOCK_RELEASE_MARGIN" -le 3600 ] ||
+        LOCK_RELEASE_MARGIN=120
 
     # An older config had a single weekends-off tick box. Carry it across the
     # first time we see one, so nobody silently loses their days off.
@@ -245,6 +267,11 @@ WALK_MIN=$WALK_MIN
 BUZZ_ON_MIN=$BUZZ_ON_MIN
 BUZZ_GAP_START_MIN=$BUZZ_GAP_START_MIN
 BUZZ_GAP_CAP_MIN=$BUZZ_GAP_CAP_MIN
+LOCK_BREAK=$LOCK_BREAK
+LOCK_ALL_MONITORS=$LOCK_ALL_MONITORS
+LOCK_HOLD_SEC=$LOCK_HOLD_SEC
+LOCK_ALARM_SEC=$LOCK_ALARM_SEC
+LOCK_RELEASE_MARGIN=$LOCK_RELEASE_MARGIN
 
 # --- heads-up before a break ---
 WARN_ENABLED=$WARN_ENABLED
@@ -367,9 +394,10 @@ stat_today() {
 }
 
 stats_summary() {
-    local t s k
+    local t s k c
     t=$(stat_today taken); s=$(stat_today snoozed); k=$(stat_today skipped)
-    echo "Today: $t taken, $s snoozed, $k skipped"
+    c=$(stat_today cut_short)
+    echo "Today: $t taken, $s snoozed, $k skipped, $c cut short"
 }
 
 # ---------------- daemon ----------------
@@ -527,6 +555,56 @@ walk_alert() {
         --gap-start "$BUZZ_GAP_START_SEC" \
         --gap-cap "$BUZZ_GAP_CAP_SEC" \
         --default-code 0 \
-        --button "I'm back at work|0|primary" \
+        --button "I'm back at work|0|primary|now" \
         --button "Turn off reminders|20|quiet"
+}
+
+# Is this break one the screen gets locked for? The lock ends when the walk is
+# up, so without a walk stage there is nothing for it to end at.
+use_locked_cycle() {
+    [ "$LOCK_BREAK" = "1" ] && [ "$WALK_ENABLED" = "1" ]
+}
+
+# The whole break in a single window: the prompt, then the break itself with
+# the screen held, then the call back. One process rather than three, because
+# the gap between break_alert ending and walk_alert starting is precisely the
+# moment you could sit back down - which is what the lock exists to stop.
+#
+# Fullscreen is forced regardless of FULLSCREEN: a window that claims the
+# mouse and keyboard but only covers part of the screen is the worst of both.
+locked_break_cycle() {
+    local mode=loop
+    [ "$LOOP_SOUND" = "1" ] || mode=once
+    local -a lock=(--lock --fullscreen
+                   --walk-seconds "$WALK_SEC"
+                   --hold-seconds "$LOCK_HOLD_SEC"
+                   --release-margin "$LOCK_RELEASE_MARGIN")
+    [ "$LOCK_ALL_MONITORS" = "1" ] && lock+=(--all-monitors)
+    # No "I took my break!": the screen is locked the moment this appears, so
+    # acknowledging it would only start a clock that may as well already be
+    # running. Snooze and "Turn off reminders" both stay - putting a break off
+    # and calling the day off have to remain possible from here.
+    #
+    # The alarm is a short burst rather than the usual 90 seconds, because
+    # nothing silences it any more - and on a one-minute break the old cap
+    # would have meant alarm for the entire break.
+    show_alert \
+        --title "$BREAK_TITLE" \
+        --message "$BREAK_MESSAGE" \
+        --hint "the screen stays locked until the break is over" \
+        --sound "$SOUND" --buzz-mode "$mode" \
+        --sound-max "$LOCK_ALARM_SEC" \
+        --default-code 0 \
+        --button "Snooze $(human_dur "$SNOOZE_SEC")|10|normal" \
+        --button "Turn off reminders|20|quiet" \
+        "${lock[@]}" \
+        --walk-title "$WALK_TITLE" \
+        --walk-message "$WALK_MESSAGE" \
+        --walk-hint "this keeps buzzing until you click" \
+        --walk-sound "$WALK_SOUND" \
+        --buzz-on "$BUZZ_ON_SEC" \
+        --gap-start "$BUZZ_GAP_START_SEC" \
+        --gap-cap "$BUZZ_GAP_CAP_SEC" \
+        --walk-button "I'm back at work|0|primary|now" \
+        --walk-button "Turn off reminders|20|quiet"
 }

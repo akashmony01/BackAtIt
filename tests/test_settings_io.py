@@ -109,14 +109,17 @@ os.remove(st.PAUSE_FILE)
 
 today = date.today().isoformat()
 open(st.STATS_FILE, "w").write(
-    f"{today}\ttaken\n{today}\ttaken\n{today}\tsnoozed\n1999-01-01\ttaken\n{today}\tturned_off\n")
-ck("stats today", st.stats_today(), {"taken": 2, "snoozed": 1, "skipped": 0})
+    f"{today}\ttaken\n{today}\ttaken\n{today}\tsnoozed\n1999-01-01\ttaken\n"
+    f"{today}\tturned_off\n{today}\tcut_short\n")
+ck("stats today", st.stats_today(),
+   {"taken": 2, "snoozed": 1, "skipped": 0, "cut_short": 1})
 rows = st.stats_range(7)
 ck("range length", len(rows), 7)
 ck("range ends today", rows[-1][0], today)
 ck("range oldest first", rows[0][0] < rows[-1][0], True)
 st.STATS_FILE = "/nonexistent/x.tsv"
-ck("missing stats file", st.stats_today(), {"taken": 0, "snoozed": 0, "skipped": 0})
+ck("missing stats file", st.stats_today(),
+   {"taken": 0, "snoozed": 0, "skipped": 0, "cut_short": 0})
 ck("missing file still gives rows", len(st.stats_range(30)), 30)
 
 ck("daemon_running with no pidfile", st.daemon_running(), False)

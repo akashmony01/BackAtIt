@@ -77,7 +77,7 @@ ck("five tabs", [t["name"] for t in w.tabs],
    ["Timing", "When it runs", "Alerts", "Stats", "Guide"])
 ck("every group landed in a tab", sum(len(t["sections"]) for t in w.tabs), len(w.sections))
 for name, n in (("Timing", 3), ("When it runs", 3), ("Alerts", 3),
-                ("Stats", 3), ("Guide", 5)):
+                ("Stats", 3), ("Guide", 6)):
     got = [len(t["sections"]) for t in w.tabs if t["name"] == name][0]
     ck(f"{name} holds {n} groups", got, n)
 for t in w.tabs:
@@ -180,6 +180,28 @@ w.e_break_title.set_text("   "); w.e_walk_title.set_text(""); w._save()
 ck("blank heading falls back", st.read_config()["BREAK_TITLE"], "Take a break!")
 ck("blank walk heading falls back", st.read_config()["WALK_TITLE"], "Walk time is up")
 
+print("=== locking the screen for the break ===")
+w.cb_walk.set_active(True); w.cb_lock.set_active(False); w._sync_sensitivity()
+ck("lock offered when there is a walk stage", w.box_lock.get_sensitive(), True)
+ck("monitor choice dead until the lock is on", w.box_lock_all.get_sensitive(), False)
+w.cb_lock.set_active(True); w._sync_sensitivity()
+ck("monitor choice live with the lock on", w.box_lock_all.get_sensitive(), True)
+# No walk stage means no moment for the lock to end at, so the whole thing
+# goes away rather than sitting there offering to hold the screen forever.
+w.cb_walk.set_active(False); w._sync_sensitivity()
+ck("no walk stage greys the lock", w.box_lock.get_sensitive(), False)
+ck("no walk stage greys the monitor choice", w.box_lock_all.get_sensitive(), False)
+w.cb_walk.set_active(True); w._sync_sensitivity()
+
+w.cb_lock.set_active(True); w.cb_lock_all.set_active(False); w._save()
+saved = st.read_config()
+ck("lock saved", saved["LOCK_BREAK"], "1")
+ck("monitor choice saved", saved["LOCK_ALL_MONITORS"], "0")
+w.cb_lock.set_active(False); w.cb_lock_all.set_active(True); w._save()
+saved = st.read_config()
+ck("lock cleared", saved["LOCK_BREAK"], "0")
+ck("monitor choice restored", saved["LOCK_ALL_MONITORS"], "1")
+
 print("=== label above field, field fills the width ===")
 for name, g in (("break length", w.row_walk), ("nag cap", w.row_cap),
                 ("warn lead", w.row_warn), ("idle", w.row_idle),
@@ -232,12 +254,16 @@ st.Gtk.main_quit = real_quit
 print("=== stats tab ===")
 open(st.STATS_FILE, "w").write("".join(
     f"{(date.today() - timedelta(days=d)).isoformat()}\t{ev}\n"
-    for d, evs in ((0, ["taken", "taken", "snoozed"]), (1, ["taken"]), (3, ["skipped"]))
+    for d, evs in ((0, ["taken", "taken", "snoozed", "cut_short"]),
+                   (1, ["taken"]), (3, ["skipped"]))
     for ev in evs))
 w._stats_stamp = None; w._refresh_stats_if_changed()
 ck("chart got 7 rows", len(w.chart.rows), 7)
 ck("last row is today", w.chart.rows[-1][0], date.today().isoformat())
-ck("today's counts", w.chart.rows[-1][1], {"taken": 2, "snoozed": 1, "skipped": 0})
+ck("today's counts", w.chart.rows[-1][1],
+   {"taken": 2, "snoozed": 1, "skipped": 0, "cut_short": 1})
+ck("totals mention the break cut short",
+   "<b>1</b> cut short" in w.lbl_totals.get_label(), True)
 ck("totals mention 3 taken", "<b>3</b> taken" in w.lbl_totals.get_label(), True)
 
 print("=== switching period must not change the width ===")
@@ -289,5 +315,39 @@ w.cb_walk.set_active(True); w._sync_sensitivity()
 ck("live again", w.row_walk.get_sensitive(), True)
 
 shutil.rmtree(SB, ignore_errors=True)
+print("=== about.conf containing markup characters ===")
+# The About card is built with set_markup, and Pango rejects the WHOLE string
+# on one unescaped "&" - so a name like "Smith & Co" used to leave the card
+# blank rather than merely mis-rendered. Nothing about it looks broken from
+# the code, which is exactly why it needs pinning.
+sb2 = tempfile.mkdtemp()
+with open(os.path.join(sb2, "about.conf"), "w") as fh:
+    fh.write('APP_NAME="Smith & Co"\nAPP_VERSION="1.0 <beta>"\n'
+             'APP_AUTHOR="A & B"\nAPP_EMAIL="a@b.c"\n'
+             'APP_URL="https://x/?a=1&b=2"\nAPP_LICENSE="MIT & co"\n')
+_saved_dir = st.APP_DIR
+st.APP_DIR = sb2
+w2 = st.Window()
+st.APP_DIR = _saved_dir
+
+seen = []
+def _collect(widget):
+    if isinstance(widget, Gtk.Label):
+        seen.append(widget.get_text())
+    if isinstance(widget, Gtk.Container):
+        for child in widget.get_children():
+            _collect(child)
+for sec in [t for t in w2.tabs if t["name"] == "Guide"][0]["sections"]:
+    _collect(sec)
+# Name and version together, because the name alone also appears in the
+# section heading - a plain label that renders fine either way and would let
+# this pass while the markup body underneath was blank.
+ck("About card renders with an ampersand in the name",
+   any("Smith & Co 1.0 <beta>" in t for t in seen), True)
+ck("...and the licence line is not lost",
+   any("MIT & co" in t for t in seen), True)
+w2.destroy()
+shutil.rmtree(sb2, ignore_errors=True)
+
 print("FAILURES:", fails if fails else "none")
 sys.exit(1 if fails else 0)

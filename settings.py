@@ -115,6 +115,7 @@ CSS = b"""
 .bar-taken     { background-color: #2ec27e; }
 .bar-snoozed   { background-color: #e5a50a; }
 .bar-skipped   { background-color: alpha(currentColor, 0.30); }
+.bar-cut       { background-color: #c01c28; }
 """
 
 
@@ -224,7 +225,7 @@ def paused_today():
 
 
 def stats_today():
-    counts = {"taken": 0, "snoozed": 0, "skipped": 0}
+    counts = {"taken": 0, "snoozed": 0, "skipped": 0, "cut_short": 0}
     today = date.today().isoformat()
     try:
         with open(STATS_FILE) as fh:
@@ -262,7 +263,8 @@ def stats_range(days):
     """Counts per day for the last `days` days, oldest first."""
     today = date.today()
     keys = [(today - timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
-    data = {k: {"taken": 0, "snoozed": 0, "skipped": 0} for k in keys}
+    data = {k: {"taken": 0, "snoozed": 0, "skipped": 0, "cut_short": 0}
+            for k in keys}
     try:
         with open(STATS_FILE) as fh:
             for line in fh:
@@ -275,6 +277,7 @@ def stats_range(days):
 
 
 SERIES = (("taken", "Taken", "bar-taken"),
+          ("cut_short", "Cut short", "bar-cut"),
           ("snoozed", "Snoozed", "bar-snoozed"),
           ("skipped", "Skipped", "bar-skipped"))
 
@@ -361,9 +364,10 @@ class BarChart(Gtk.Box):
             tot.set_width_chars(2)
             row.pack_start(tot, False, False, 0)
 
-            row.set_tooltip_text("%s — %d taken, %d snoozed, %d skipped"
-                                 % (d.strftime("%a %d %b"), counts["taken"],
-                                    counts["snoozed"], counts["skipped"]))
+            row.set_tooltip_text(
+                "%s — %d taken, %d cut short, %d snoozed, %d skipped"
+                % (d.strftime("%a %d %b"), counts["taken"], counts["cut_short"],
+                   counts["snoozed"], counts["skipped"]))
             self.pack_start(row, False, False, 0)
         self.show_all()
 
@@ -732,6 +736,27 @@ class Window(Gtk.Window):
             "the back-to-work alarm waits longer each time; this is the longest it waits",
             indent=26)
 
+        # Boxed rather than added straight to the card: _check packs its
+        # explanation as a sibling and hands back only the tick box, so a
+        # container is the only way to grey the wording along with the control.
+        self.box_lock = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        sec.pack_start(self.box_lock, False, False, 0)
+        self.cb_lock = self._check(
+            self.box_lock, "Lock the screen for the whole break",
+            flag(c, "LOCK_BREAK", "0"),
+            "The alert stays up for the entire break instead of closing when "
+            "you answer it, and takes over the mouse and keyboard so you "
+            "cannot carry on working. Hold the unlock button for five seconds "
+            "if you genuinely need the machine back.",
+            indent=26)
+        self.box_lock_all = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        sec.pack_start(self.box_lock_all, False, False, 0)
+        self.cb_lock_all = self._check(
+            self.box_lock_all, "Cover every monitor", flag(c, "LOCK_ALL_MONITORS"),
+            "Blanks your other screens too. Without this only the screen the "
+            "alert opens on is covered, and the rest stay usable.",
+            indent=52)
+
         sec = self._section("Before the break", "Avoid being ambushed mid-sentence.")
         self.cb_warn = self._check(
             sec, "Warn me that a break is coming", flag(c, "WARN_ENABLED"),
@@ -852,7 +877,8 @@ class Window(Gtk.Window):
             tests.pack_start(b, False, False, 0)
         sec.pack_start(tests, False, False, 0)
 
-        for cb in (self.cb_walk, self.cb_warn, self.cb_idle, self.cb_sched):
+        for cb in (self.cb_walk, self.cb_warn, self.cb_idle, self.cb_sched,
+                   self.cb_lock):
             cb.connect("toggled", lambda *_: self._sync_sensitivity())
         self._connect_dirty()
 
@@ -876,7 +902,8 @@ class Window(Gtk.Window):
             "break never lands mid-sentence.\n"
             "<b>3.</b>  A full-screen alert appears and the alarm sounds. The "
             "keyboard is ignored, so carrying on typing cannot dismiss it, and "
-            "the buttons stay dead for three seconds.\n"
+            "any button that would cost you something waits three seconds, so "
+            "a click already in flight cannot either.\n"
             "<b>4.</b>  Click <b>I took my break!</b> and walk away.\n"
             "<b>5.</b>  When the walk is up, a second alert calls you back and "
             "keeps buzzing — a minute of alarm, then a longer and longer silence "
@@ -912,8 +939,37 @@ class Window(Gtk.Window):
             "<b>Off for today</b> — you stopped it; a schedule resumes tomorrow.\n"
             "<b>Not running</b> — the background app is stopped. Press "
             "<b>Start reminders</b>.\n\n"
-            "The line underneath counts today's breaks: taken, snoozed, and "
-            "skipped because you were already away.")
+            "The line underneath counts today's breaks: taken, cut short, "
+            "snoozed, and skipped because you were already away.")
+
+        sec = self._section("Locking the screen")
+        self._prose(sec,
+            "<i>Timing \u2192 Lock the screen for the whole break</i> turns the "
+            "alert from something you dismiss into something you wait out. "
+            "There is no <b>I took my break!</b> to press \u2014 the screen "
+            "locks the moment the alarm sounds and the break starts counting "
+            "down there and then, so there is no moment where you could "
+            "quietly sit back down. Your other monitors go dark too.\n\n"
+            "<b>Getting out early.</b>  Hold the unlock button for five "
+            "seconds and the machine is yours again. That does <i>not</i> end "
+            "your day \u2014 the next break arrives exactly when it would "
+            "have. It is counted as a break cut short, so the tally stays "
+            "honest. Only <i>Turn off reminders</i> stops them until "
+            "tomorrow.\n\n"
+            "<b>It lets go by itself.</b>  The moment the break time is up the "
+            "mouse and keyboard are yours again, and the alert goes back to "
+            "being an ordinary one that buzzes until you answer it. There is "
+            "also a safety timer: if the app ever froze mid-break it would "
+            "release your input anyway rather than leave you stuck.\n\n"
+            "<b>See it first.</b>  <i>Alerts \u2192 Test break alert</i> shows "
+            "the real locked window with a ten-second stand-in break, so you "
+            "can try it without losing the time.\n\n"
+            "<b>Snoozing still works.</b>  The break has already begun by the "
+            "time you read the alert, so snoozing abandons it and puts the "
+            "next one off by your snooze length. It is a single click, which "
+            "makes it a quicker way out than the unlock bar \u2014 set "
+            "<i>Snooze length</i> to something you would rather not wait "
+            "through if that bothers you.")
 
         info = about_info()
         sec = self._section("About %s" % info["APP_NAME"])
@@ -935,11 +991,16 @@ class Window(Gtk.Window):
             "<b>Licence</b>  %s — free to use, change and share, including "
             "commercially. The only condition is that the copyright notice "
             "stays with it.\n%s"
-            % (info["APP_NAME"], info["APP_VERSION"],
+            # Every one of these is escaped, not just the obvious ones: they
+            # all come from about.conf, and a single unescaped "&" in any of
+            # them makes Pango reject the whole string, leaving the About card
+            # blank rather than merely wrong.
+            % (GLib.markup_escape_text(info["APP_NAME"]),
+               GLib.markup_escape_text(info["APP_VERSION"]),
                GLib.markup_escape_text(who),
                ("  &lt;%s&gt;" % GLib.markup_escape_text(info["APP_EMAIL"]))
                if info["APP_EMAIL"] else "",
-               info["APP_LICENSE"],
+               GLib.markup_escape_text(info["APP_LICENSE"]),
                ("<b>Home</b>  %s" % GLib.markup_escape_text(info["APP_URL"]))
                if info["APP_URL"] else ""))
 
@@ -1005,8 +1066,11 @@ class Window(Gtk.Window):
         note.get_style_context().add_class("muted")
         self._wrap(note, HELP_CHARS + 8)
         note.set_margin_top(8)
-        note.set_text("Counted when you answer an alert. \u201cSkipped\u201d means a "
-                      "break fell due while you were already away from the keyboard.")
+        note.set_text(
+            "Counted when you answer an alert. \u201cSkipped\u201d means a break "
+            "fell due while you were already away from the keyboard, and "
+            "\u201ccut short\u201d that you unlocked a locked break before it "
+            "had finished.")
         sec.pack_start(note, False, False, 0)
 
         sec = self._section("History")
@@ -1047,16 +1111,16 @@ class Window(Gtk.Window):
         active = [c for _, c in rows if sum(c.values())]
         avg = (sum(totals.values()) / len(active)) if active else 0
         self.lbl_totals.set_markup(
-            "Over the last %d days: <b>%d</b> taken, <b>%d</b> snoozed, "
-            "<b>%d</b> skipped.\nThat is %s breaks on each of the %d days you "
-            "were at the desk."
-            % (self._stats_days, totals["taken"], totals["snoozed"],
-               totals["skipped"], ("%.1f" % avg).rstrip("0").rstrip("."),
-               len(active)))
+            "Over the last %d days: <b>%d</b> taken, <b>%d</b> cut short, "
+            "<b>%d</b> snoozed, <b>%d</b> skipped.\nThat is %s breaks on each "
+            "of the %d days you were at the desk."
+            % (self._stats_days, totals["taken"], totals["cut_short"],
+               totals["snoozed"], totals["skipped"],
+               ("%.1f" % avg).rstrip("0").rstrip("."), len(active)))
         t = stats_today()
         self.lbl_today.set_text(
-            "Today so far: %d taken, %d snoozed, %d skipped."
-            % (t["taken"], t["snoozed"], t["skipped"]))
+            "Today so far: %d taken, %d cut short, %d snoozed, %d skipped."
+            % (t["taken"], t["cut_short"], t["snoozed"], t["skipped"]))
 
     def _action_bar(self):
         bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -1115,7 +1179,8 @@ class Window(Gtk.Window):
                    self.sp_warn, self.sp_idle):
             sp.connect("value-changed", mark)
         for cb in (self.cb_walk, self.cb_warn, self.cb_idle, self.cb_sched,
-                   self.cb_loop, self.cb_full, self.cb_autostart):
+                   self.cb_loop, self.cb_full, self.cb_autostart,
+                   self.cb_lock, self.cb_lock_all):
             cb.connect("toggled", mark)
         for entry in (self.e_start, self.e_end,
                       self.e_break_title, self.e_walk_title):
@@ -1131,8 +1196,13 @@ class Window(Gtk.Window):
     def _sync_sensitivity(self):
         """Grey out whatever belongs to a switched-off option, so the window
         shows what is actually in effect rather than a wall of live controls."""
+        walking = self.cb_walk.get_active()
         for widget in (self.row_walk, self.echo_walk, self.row_cap, self.echo_cap):
-            widget.set_sensitive(self.cb_walk.get_active())
+            widget.set_sensitive(walking)
+        # The lock ends when the walk is up, so with no walk stage there is
+        # nothing for it to end at and the daemon ignores it entirely.
+        self.box_lock.set_sensitive(walking)
+        self.box_lock_all.set_sensitive(walking and self.cb_lock.get_active())
         for widget in (self.row_warn, self.echo_warn):
             widget.set_sensitive(self.cb_warn.get_active())
         for widget in (self.row_idle, self.echo_idle):
@@ -1215,6 +1285,8 @@ class Window(Gtk.Window):
             "WALK_ENABLED": int(self.cb_walk.get_active()),
             "WALK_MIN": self.sp_walk.get_value(),
             "BUZZ_GAP_CAP_MIN": self.sp_cap.get_value(),
+            "LOCK_BREAK": int(self.cb_lock.get_active()),
+            "LOCK_ALL_MONITORS": int(self.cb_lock_all.get_active()),
             "WARN_ENABLED": int(self.cb_warn.get_active()),
             "WARN_LEAD_MIN": self.sp_warn.get_value(),
             "IDLE_SKIP": int(self.cb_idle.get_active()),
@@ -1283,9 +1355,24 @@ class Window(Gtk.Window):
             os.remove(AUTOSTART)
 
     def _play(self, path):
-        if path and os.path.exists(path):
-            subprocess.Popen(["pw-play", path],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        """Preview a sound with the same player the alerts will use.
+
+        Asked of lib.sh rather than hard-coded: pw-play is only the first
+        choice, and on a machine without PipeWire this button used to do
+        nothing at all while the alerts themselves played perfectly well.
+        """
+        if not path or not os.path.exists(path):
+            return
+        try:
+            player = subprocess.run(
+                ["bash", "-c", '. "$1/lib.sh"; player_cmd', "_", APP_DIR],
+                capture_output=True, text=True, timeout=5).stdout.split()
+        except (OSError, subprocess.SubprocessError):
+            player = []
+        if not player:
+            return
+        subprocess.Popen(player + [path],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def _in_schedule(self):
         """Is the daily schedule what is keeping it running right now?

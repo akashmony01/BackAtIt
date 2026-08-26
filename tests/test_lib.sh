@@ -176,7 +176,10 @@ printf '1999-01-01\ttaken\n' >> "$STATS_FILE"
 ck "taken today"   "$(stat_today taken)"   2
 ck "snoozed today" "$(stat_today snoozed)" 1
 ck "unseen event"  "$(stat_today back)"    0
-ck "summary"       "$(stats_summary)"      "Today: 2 taken, 1 snoozed, 1 skipped"
+ck "summary"       "$(stats_summary)"      "Today: 2 taken, 1 snoozed, 1 skipped, 0 cut short"
+record_stat cut_short
+ck "cut short today" "$(stat_today cut_short)" 1
+ck "summary counts it" "$(stats_summary)" "Today: 2 taken, 1 snoozed, 1 skipped, 1 cut short"
 ( STATS_FILE=/nonexistent/x.tsv; [ "$(stat_today taken)" = "0" ] ) && echo "  ok   missing stats file -> 0" || { echo "  FAIL missing stats file"; fail=1; }
 
 echo "=== away detection (must not be fooled by the 64 in uint64) ==="
@@ -197,5 +200,31 @@ SOUND=/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga
 [ -n "$(player_cmd)" ] && echo "  ok   player resolved: $(player_cmd)" || { echo "  FAIL no player"; fail=1; }
 SOUND=/nonexistent/nope.oga
 play_once && { echo "  FAIL played a missing file"; fail=1; } || echo "  ok   missing sound file fails cleanly"
+
+echo "=== locking the screen for the break ==="
+load_config
+ck "lock is off unless asked for" "$LOCK_BREAK"        0
+ck "all monitors on by default"   "$LOCK_ALL_MONITORS" 1
+
+LOCK_BREAK=1; WALK_ENABLED=1
+use_locked_cycle && echo "  ok   lock + walk stage -> locked break" || { echo "  FAIL"; fail=1; }
+# Without a walk stage there is no "walk is up" for the lock to end at, so the
+# daemon must ignore the setting rather than hold the screen indefinitely.
+WALK_ENABLED=0
+use_locked_cycle && { echo "  FAIL locked with no walk stage"; fail=1; } || echo "  ok   no walk stage -> ordinary break"
+LOCK_BREAK=0; WALK_ENABLED=1
+use_locked_cycle && { echo "  FAIL locked while switched off"; fail=1; } || echo "  ok   switched off -> ordinary break"
+
+echo "=== the lock settings survive a save/load round trip ==="
+_saved_cfg=$CONFIG
+CONFIG=$(mktemp)
+load_config
+LOCK_BREAK=1; LOCK_ALL_MONITORS=0
+save_config
+LOCK_BREAK=; LOCK_ALL_MONITORS=
+load_config
+ck "LOCK_BREAK written and read back"        "$LOCK_BREAK"        1
+ck "LOCK_ALL_MONITORS written and read back" "$LOCK_ALL_MONITORS" 0
+rm -f "$CONFIG"; CONFIG=$_saved_cfg
 
 exit $fail

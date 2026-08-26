@@ -11,6 +11,12 @@
 #   1. "Take a break!"     -> you get up
 #   2. "Walk time is up"   -> you come back, and it nags until you say so
 # Stage 2 is optional (WALK_ENABLED).
+#
+# With LOCK_BREAK both stages happen inside one alert window that never leaves
+# the screen between them (see locked_break_cycle in lib.sh), so there is no
+# gap in the middle where you could sit back down. That branch blocks here for
+# the whole break rather than looping, which is why it cannot abandon one
+# part-way the way walk_stage can.
 
 # shellcheck source=lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
@@ -140,26 +146,86 @@ while :; do
 
         log "firing break alert"
         set_phase alert
-        break_alert
-        case $? in
-            10)
-                record_stat snoozed
-                remaining=$SNOOZE_SEC
-                log "snoozed $(human_dur "$SNOOZE_SEC")"
-                ;;
-            20)
-                turn_off
-                remaining=-1
-                ;;
-            *)
-                record_stat taken
-                if [ "$WALK_ENABLED" = "1" ]; then
-                    walk_stage || { remaining=-1; continue; }
-                fi
-                remaining=$INTERVAL_SEC
-                log "next break in $(human_dur "$INTERVAL_SEC")"
-                ;;
-        esac
+        if use_locked_cycle; then
+            # One window holds the prompt, the break and the call back, so we
+            # are blocked here for the whole thing. That also means a schedule
+            # window closing mid-break cannot abandon it the way walk_stage
+            # can — deliberately: you finish the break you started.
+            log "locked break (screen held for $(human_dur "$WALK_SEC"))"
+            locked_break_cycle
+            rc=$?
+            # Codes are defined at the top of alert.py; keep the two in step.
+            case $rc in
+                10)
+                    # Snoozed out of a break that had already started. It is a
+                    # deferral, not a break part-taken, so it counts the same
+                    # as any other snooze and the next one lands sooner.
+                    record_stat snoozed
+                    remaining=$SNOOZE_SEC
+                    log "locked break snoozed $(human_dur "$SNOOZE_SEC")"
+                    ;;
+                20)
+                    # "Turn off reminders" during the break: it was cut short
+                    # AND the day is over.
+                    record_stat cut_short
+                    log "locked break cut short, then turned off"
+                    turn_off
+                    remaining=-1
+                    ;;
+                21)
+                    # Held the unlock bar. They needed the machine back, not
+                    # the day cancelled - so the cycle simply carries on and
+                    # the next break arrives when it always would have.
+                    record_stat cut_short
+                    remaining=$INTERVAL_SEC
+                    log "locked break bypassed, next break in $(human_dur "$INTERVAL_SEC")"
+                    ;;
+                22)
+                    # Turned off at the back-to-work stage. The break itself
+                    # was served in full, so it counts as taken.
+                    record_stat taken
+                    log "turned off after a full locked break"
+                    turn_off
+                    remaining=-1
+                    ;;
+                0)
+                    record_stat taken
+                    record_stat back
+                    remaining=$INTERVAL_SEC
+                    log "locked break done, next break in $(human_dur "$INTERVAL_SEC")"
+                    ;;
+                *)
+                    # Anything else means the alert did not exit on its own -
+                    # killed from a console, or it crashed. Counting that as a
+                    # break seen through would be a lie, and the documented way
+                    # out of a wedged lock is exactly this kill.
+                    record_stat cut_short
+                    remaining=$INTERVAL_SEC
+                    log "locked break ended unexpectedly (code $rc), next break in $(human_dur "$INTERVAL_SEC")"
+                    ;;
+            esac
+        else
+            break_alert
+            case $? in
+                10)
+                    record_stat snoozed
+                    remaining=$SNOOZE_SEC
+                    log "snoozed $(human_dur "$SNOOZE_SEC")"
+                    ;;
+                20)
+                    turn_off
+                    remaining=-1
+                    ;;
+                *)
+                    record_stat taken
+                    if [ "$WALK_ENABLED" = "1" ]; then
+                        walk_stage || { remaining=-1; continue; }
+                    fi
+                    remaining=$INTERVAL_SEC
+                    log "next break in $(human_dur "$INTERVAL_SEC")"
+                    ;;
+            esac
+        fi
         warned=0
         [ "$remaining" -gt 0 ] && write_next "$remaining"
     else

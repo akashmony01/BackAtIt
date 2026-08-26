@@ -30,6 +30,13 @@ run "buzzer loop"        timeout 60  python3 test_alert.py loop
 run "buzzer once"        timeout 60  python3 test_alert.py once
 run "settings config"    timeout 120 python3 test_settings_io.py
 run "settings window"    timeout 200 python3 test_settings_ui.py
+run "lock plumbing"      timeout 60  python3 test_lock.py plumbing
+run "locked break cycle" timeout 90  python3 test_lock.py cycle
+run "locked hold to exit" timeout 60 python3 test_lock.py hold
+run "locked turn off"    timeout 90  python3 test_lock.py walkoff
+run "locked cut short"   timeout 60  python3 test_lock.py turnoff
+run "locked snooze"      timeout 60  python3 test_lock.py snooze
+run "unlocked unchanged" timeout 60  python3 test_lock.py plain
 echo
 [ "$fails" = 0 ] && echo "all suites passed" || echo "$fails suite(s) failed"
 exit $fails
