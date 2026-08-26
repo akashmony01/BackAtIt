@@ -23,17 +23,17 @@ Grab the `.deb` from the [**latest release**](https://github.com/akashmony01/Bac
 then:
 
 ```sh
-sudo apt install ./backatit_1.1_all.deb
+sudo apt install ./backatit_1.6_all.deb
 ```
 
 Or straight from the terminal, without opening a browser:
 
 ```sh
-wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_1.1_all.deb
-sudo apt install ./backatit_1.1_all.deb
+wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_1.6_all.deb
+sudo apt install ./backatit_1.6_all.deb
 ```
 
-<sub>That command names version 1.0 explicitly; check
+<sub>That command names a version explicitly; check
 [releases](https://github.com/akashmony01/BackAtIt/releases/latest) for the
 current filename if a newer one is out.</sub>
 
@@ -72,28 +72,40 @@ Everything about it bends to how you actually work.
 
 ## Screenshots
 
-| The break alert | Settings |
+| A locked break — the screen is held until it is over | Called back to the desk |
 |---|---|
-| <img src="screenshots/alert.png" alt="The full-screen break alert"> | <img src="screenshots/timing.png" alt="The Timing tab"> |
+| <img src="screenshots/alert.png" alt="The full-screen break alert, counting down"> | <img src="screenshots/back.png" alt="The back-to-work alert"> |
 
-| Statistics | Built-in guide |
+| Timing | Statistics |
 |---|---|
-| <img src="screenshots/stats.png" alt="Breaks per day"> | <img src="screenshots/guide.png" alt="The Guide tab"> |
+| <img src="screenshots/timing.png" alt="The Timing tab"> | <img src="screenshots/stats.png" alt="Breaks per day"> |
+
+<img src="screenshots/guide.png" alt="The built-in guide">
 
 ---
 
 ## What it does
 
 - **Full-screen alerts** that cannot hide behind the window you are working in
-- **Keyboard-proof** — nothing you type can dismiss an alert, and the buttons
-  stay dead for three seconds so a click already in flight cannot either
+- **Keyboard-proof** — nothing you type can dismiss an alert. Buttons that
+  cost you something also wait three seconds, so a mouse click already in
+  flight when the alert lands cannot dismiss it either
+- **Colour-coded** — amber to get up, green to come back, so you know which
+  alert it is before you have read it
+- **Sized to your screen** — the alerts scale themselves to the monitor they
+  land on, so they read the same on a laptop as on a desktop
 - **Calls you back** when the break is over, and keeps nagging until you answer
+- **Locks the screen for the whole break**, optionally — no button to press,
+  no way to carry on working. The break starts the instant the alarm does and
+  the mouse and keyboard go with it. Hold the unlock button for five seconds
+  if you genuinely need the machine; it ends that break, not your day
 - **Knows when you are away** and stays quiet instead of alarming an empty room
 - **Daily schedule** with any combination of days off, not just weekends
 - **Your words** — the heading and message of both alerts are editable
 - **Your sounds** — a different one for each alert, so you can tell them apart
   from another room
-- **Statistics** — breaks taken, snoozed and skipped, over the last week or month
+- **Statistics** — breaks taken, cut short, snoozed and skipped, over the
+  last week or month
 - **Fractional minutes** — every timing accepts halves, down to 30 seconds
 
 ---
@@ -107,7 +119,7 @@ or build it yourself from a clone:
 
 ```sh
 ./build-deb.sh
-sudo apt install ./backatit_1.1_all.deb
+sudo apt install ./backatit_1.6_all.deb
 ```
 
 Remove it with `sudo apt remove backatit`.
@@ -155,6 +167,15 @@ however long an alert sits there, you still get a full work block afterwards.
 
 Step 5 is optional, as is almost everything else.
 
+With **Lock the screen for the whole break** switched on, steps 3 to 5 happen
+in one window that never leaves the screen, and step 4 disappears entirely —
+there is nothing to acknowledge, because the screen is already locked. The
+break starts counting down the moment the alarm sounds, and the window shows
+how long is left while holding the mouse and keyboard. You get them back at
+step 5. Hold the unlock button for five seconds if you genuinely need the
+machine: that ends the break early and is counted as one cut short, but the
+next break still arrives on time. Only *Turn off reminders* stops the day.
+
 ---
 
 ## Where things live
@@ -167,9 +188,23 @@ Step 5 is optional, as is almost everything else.
 
 Installing, upgrading and removing never touch your settings or statistics.
 
-A few advanced settings are only in the config file: `BUZZ_ON_MIN`,
-`BUZZ_GAP_START_MIN` and `GRACE_SEC`. Editing that file by hand is safe — the
-app changes values in place and leaves your comments alone.
+Upgrading stops the background app, because it reads its code once when it
+starts and would otherwise keep serving you the previous version until you
+next logged in. Open BackAtIt after an upgrade to start it again.
+
+A few advanced settings are only in the config file:
+
+| Setting | Does | Default |
+|---|---|---|
+| `BUZZ_ON_MIN` | how long each back-to-work buzz lasts | 1 |
+| `BUZZ_GAP_START_MIN` | the first silence between buzzes | 2 |
+| `GRACE_SEC` | how long a costly button stays greyed out; `0` turns it off | 3 |
+| `LOCK_HOLD_SEC` | how long the unlock button must be held | 5 |
+| `LOCK_ALARM_SEC` | how long the alarm sounds on a locked break | 10 |
+| `LOCK_RELEASE_MARGIN` | how long past a locked break the input lock gives up on its own | 120 |
+
+Editing that file by hand is safe — the app changes values in place and leaves
+your comments alone.
 
 ---
 
@@ -178,11 +213,11 @@ app changes values in place and leaves your comments alone.
 | Script | Does |
 |---|---|
 | `./install.sh` | install or uninstall from source |
-| `./build-deb.sh` | build a `.deb` (`VERSION=1.1 ./build-deb.sh`) |
+| `./build-deb.sh` | build a `.deb` (`VERSION=1.6 ./build-deb.sh`) |
 | `./make-icons.sh` | regenerate icon sizes from `logo.png` |
 | `./demo-stats.sh on` | fill the stats page with sample data (`off` restores) |
 | `./purge.sh --dry-run` | list every trace of the app on the machine |
-| `./tests/run.sh` | run the test suite (10 suites, sandboxed) |
+| `./tests/run.sh` | run the test suite (17 suites, sandboxed) |
 
 Your name, email and version live in `about.conf`, which the About card, the
 package metadata and the licence all read from.
@@ -193,10 +228,12 @@ package metadata and the licence all read from.
 ./tests/run.sh
 ```
 
-Ten suites covering the schedule and days-off logic, config parsing and
-quoting, the daemon's lifecycle, the alert window and its buzzer, and the
-settings window. They run against sandboxed copies of the config, statistics
-and runtime state, so your real settings are never touched.
+Seventeen suites covering the schedule and days-off logic, config parsing and
+quoting, the daemon's lifecycle, the alert window and its buzzer, the locked
+break and its exit codes, and the settings window. They run against sandboxed
+copies of the config, statistics and runtime state, so your real settings are
+never touched — and the locked-break suites never take the input lock, so a
+test run cannot walk off with your mouse and keyboard.
 
 ### Layout
 
@@ -221,6 +258,11 @@ quietly elsewhere:
   means "you are here" — so breaks always fire and nothing is skipped.
 - **The full-screen alert** prefers XWayland so it can stay on top. Under other
   compositors it still goes full screen.
+- **Locking the screen for the break** claims the mouse and keyboard through
+  XWayland, which is what stops Super and Alt-Tab getting past it. In a session
+  with no X server at all the claim is refused, and the lock quietly falls back
+  to what an ordinary alert does — covering the screen and ignoring the
+  keyboard. It says so on standard error rather than pretending.
 
 It does **not** run on Windows. The background app is bash, sound goes through
 PipeWire, away detection through D-Bus, and start-at-login through

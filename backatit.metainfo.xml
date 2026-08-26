@@ -82,10 +82,131 @@
 
   <content_rating type="oars-1.1"/>
 
+  <screenshots>
+    <screenshot type="default">
+      <caption>A locked break: the screen is held until the break is over</caption>
+      <image>https://raw.githubusercontent.com/akashmony01/BackAtIt/main/screenshots/alert.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The second alert, calling you back to the desk</caption>
+      <image>https://raw.githubusercontent.com/akashmony01/BackAtIt/main/screenshots/back.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Timing: how often, how long, and whether to lock the screen</caption>
+      <image>https://raw.githubusercontent.com/akashmony01/BackAtIt/main/screenshots/timing.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Breaks taken, cut short, snoozed and skipped</caption>
+      <image>https://raw.githubusercontent.com/akashmony01/BackAtIt/main/screenshots/stats.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The built-in guide</caption>
+      <image>https://raw.githubusercontent.com/akashmony01/BackAtIt/main/screenshots/guide.png</image>
+    </screenshot>
+  </screenshots>
+
   <url type="homepage">https://github.com/akashmony01/BackAtIt</url>
   <url type="bugtracker">https://github.com/akashmony01/BackAtIt/issues</url>
 
   <releases>
+    <release version="1.6" date="2026-08-26">
+      <description>
+        <p>
+          Brings the bundled user guide up to date: it still described the app
+          under its old name and pointed at directories that have not been
+          used since before 1.0, and it predated the screen lock entirely.
+        </p>
+        <p>
+          The hold-to-unlock duration, the length of the alarm on a locked
+          break and the input lock's safety margin can now be set in the
+          config file, alongside the other advanced settings. Previously they
+          could only be changed by editing the program.
+        </p>
+      </description>
+    </release>
+    <release version="1.5.1" date="2026-08-23">
+      <description>
+        <p>
+          Puts Snooze back on a locked break, where 1.3 had dropped it. The
+          break has already started by then, so snoozing abandons it and puts
+          the next one off by your snooze length.
+        </p>
+      </description>
+    </release>
+    <release version="1.5" date="2026-08-23">
+      <description>
+        <p>
+          The alerts now size themselves to the screen they land on, so the
+          wording stays in proportion on a laptop panel instead of filling it.
+          Each alert's buttons sit in one row at a matching size, and Turn off
+          reminders is easier to find without becoming something you drift
+          into by accident.
+        </p>
+        <p>
+          Fixes an About card that rendered completely blank when the name,
+          version or licence in about.conf contained an ampersand or an angle
+          bracket. Sound previews in the settings window now use whichever
+          player is installed rather than assuming PipeWire, and a locked
+          break that is killed from a console is no longer recorded as one you
+          saw through.
+        </p>
+      </description>
+    </release>
+    <release version="1.4" date="2026-08-23">
+      <description>
+        <p>
+          Redraws both full-screen alerts. The time left is now the largest
+          thing on screen with a bar filling as the break runs, and the two
+          alerts are colour-coded — amber to get up, green to come back — so
+          you can tell them apart from across the room without reading them.
+        </p>
+        <p>
+          The three-second delay before buttons become clickable now applies
+          only where a stray click would cost you something. Coming back to
+          work, and the hold-to-unlock bar, respond immediately.
+        </p>
+      </description>
+    </release>
+    <release version="1.3" date="2026-08-23">
+      <description>
+        <p>
+          A locked break no longer waits to be acknowledged. The screen is
+          locked the moment the alarm sounds, so there is nothing to press:
+          the break starts counting down there and then, and the alarm is a
+          short burst rather than a minute and a half of it.
+        </p>
+        <p>
+          Unlocking early with the hold button now only ends that break. The
+          next one arrives as it always would have, and only Turn off
+          reminders stops them for the day. Breaks cut short this way are
+          counted separately, so the tally still says how many you saw
+          through.
+        </p>
+      </description>
+    </release>
+    <release version="1.2.1" date="2026-08-23">
+      <description>
+        <p>
+          Fixes an upgrade that appeared to work but did not. The background
+          app is a long-running process that reads its code once at startup,
+          and the package failed to stop it, so an upgraded machine carried on
+          running the previous version until the next login. Anyone who
+          upgraded to 1.2 and found the new screen lock did nothing was
+          hitting this.
+        </p>
+      </description>
+    </release>
+    <release version="1.2" date="2026-08-23">
+      <description>
+        <p>
+          Adds an option to lock the screen for the whole break, not just for
+          the alert. The alert stays up for the entire break, takes over the
+          mouse and keyboard and blanks your other monitors, so there is no
+          moment where you could quietly sit back down. Hold the unlock button
+          for five seconds to get out early.
+        </p>
+      </description>
+    </release>
     <release version="1.1" date="2026-08-07">
       <description>
         <p>
