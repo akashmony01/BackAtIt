@@ -27,25 +27,29 @@ package only depends on which distribution you run.
 **Ubuntu, Debian, Linux Mint, Pop!_OS** (any desktop):
 
 ```sh
-wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_2.0_all.deb
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_2.0_all.deb
 sudo apt install ./backatit_2.0_all.deb
 ```
 
 **Fedora, openSUSE** (any desktop):
 
 ```sh
-wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0-1.noarch.rpm
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0-1.noarch.rpm
 sudo dnf install ./backatit-2.0-1.noarch.rpm      # openSUSE: sudo zypper install ./backatit-2.0-1.noarch.rpm
 ```
 
 **Anything else** (Arch, Manjaro, …):
 
 ```sh
-wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0.tar.gz
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0.tar.gz
 tar xzf backatit-2.0.tar.gz && cd backatit-2.0 && ./install.sh
 ```
 
-<sub>Those commands name a version explicitly; check
+<sub>`curl -fLO --progress-bar` downloads the file into the folder you are in, under its own
+name, replacing an earlier download rather than piling up copies (`-L`
+follows GitHub's redirect to its file server, `-f` stops on an error instead
+of saving an error page). If `curl` is missing, `sudo apt install curl` (or
+`dnf`, `zypper`, `pacman`) adds it. Those commands name a version explicitly; check
 [releases](https://github.com/akashmony01/BackAtIt/releases/latest) for the
 current filenames if a newer one is out.</sub>
 
