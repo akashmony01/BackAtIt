@@ -9,6 +9,23 @@ cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 # suite collapse for reasons that have nothing to do with the app.
 unset GTK_PATH GIO_MODULE_DIR LD_LIBRARY_PATH GDK_PIXBUF_MODULE_FILE
 
+# Every suite gets private config and state directories. The suites sandbox
+# their own paths too, but merely sourcing lib.sh creates its directories and
+# migrates a "config" lying next to it - and test_quoting.py loads lib.sh from
+# a temp dir holding exactly such a file, which once copied test data into
+# the real ~/.config/backatit. With these set, nothing can reach real ones.
+SANDBOX_HOME=$(mktemp -d)
+export XDG_CONFIG_HOME="$SANDBOX_HOME/config" XDG_STATE_HOME="$SANDBOX_HOME/state"
+# The runtime dir has to stay real (it holds the display socket), so only
+# tidy away the empty backatit folder sourcing lib.sh leaves behind.
+RUNTIME_APP="${XDG_RUNTIME_DIR:-/nonexistent}/backatit"
+[ -e "$RUNTIME_APP" ] && runtime_was_there=1 || runtime_was_there=0
+cleanup() {
+    rm -rf "$SANDBOX_HOME"
+    [ "$runtime_was_there" = 0 ] && rmdir "$RUNTIME_APP" 2>/dev/null
+}
+trap cleanup EXIT
+
 fails=0
 run() {
     printf '%-26s' "$1"; shift

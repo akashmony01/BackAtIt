@@ -15,6 +15,10 @@ shutil.copy(os.path.join(APP, "lib.sh"), SB)
 spec = importlib.util.spec_from_file_location("st", os.path.join(APP, "settings.py"))
 st = importlib.util.module_from_spec(spec); spec.loader.exec_module(st)
 st.CONFIG = os.path.join(SB, "config")
+# The bash side sources lib.sh, which settles its own config path on load and
+# would migrate SB/config into it. Point that at the sandbox too.
+os.environ["XDG_CONFIG_HOME"] = os.path.join(SB, "xdg-config")
+os.environ["XDG_STATE_HOME"] = os.path.join(SB, "xdg-state")
 
 fails = []
 def ck(desc, got, want):
