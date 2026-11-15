@@ -664,10 +664,12 @@ show_alert() {
     # Wayland compositors (GNOME, KDE) will not let a window raise itself above
     # the one you are using. Under XWayland the keep-above hint is honoured,
     # and the input lock can hold Super and Alt-Tab, so prefer it.
+    # Its notes ("input locked", "could not lock input ...") go to the daemon
+    # log, which is where anyone troubleshooting a desktop will look.
     if [ -n "$DISPLAY" ]; then
-        GDK_BACKEND=x11 "${cmd[@]}"
+        GDK_BACKEND=x11 "${cmd[@]}" 2>>"$LOG"
     else
-        "${cmd[@]}"
+        "${cmd[@]}" 2>>"$LOG"
     fi
 }
 

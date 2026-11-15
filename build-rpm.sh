@@ -63,6 +63,8 @@ Requires:       /usr/bin/pkill
 Requires:       /usr/bin/setsid
 Recommends:     /usr/bin/notify-send
 Recommends:     (pipewire-utils or pipewire-tools or pulseaudio-utils or alsa-utils)
+# Idle time on X11 desktops (XFCE, MATE, Cinnamon, Budgie)
+Recommends:     (libXScrnSaver or libXss1)
 
 %description
 A break timer that is hard to ignore. At the interval you choose it takes

@@ -56,6 +56,90 @@ for your distribution.
 
 ---
 
+## Set it up on your desktop
+
+**Every desktop, after installing:**
+
+1. Open **BackAtIt** from your applications menu. That also starts the small
+   background app that keeps time.
+2. Set your break interval, then tick **Start automatically when I log in**,
+   so the schedule runs every day without opening the window.
+3. Press **Test break alert** once. It should cover the whole screen
+   and sound the alarm. If it does, you are done.
+
+Nothing else is required on any supported desktop. The notes below are only
+the places where a desktop's own settings can get in the way.
+
+<details>
+<summary><b>GNOME</b> — Ubuntu, Fedora Workstation, Debian, Pop!_OS</summary>
+
+- Nothing to change. This is the desktop BackAtIt was first built on.
+- **Do Not Disturb** (in the clock / notification menu) hides the "Break
+  coming up" heads-up. The break alert itself still appears.
+- Ubuntu 22.04 and older: notifications still clear themselves, but a new one
+  stacks under the last instead of replacing it (older `notify-send`).
+</details>
+
+<details>
+<summary><b>KDE Plasma</b> — Fedora KDE, Kubuntu, KDE neon, openSUSE, Manjaro KDE</summary>
+
+- Nothing to change on Plasma 6, on Wayland or X11.
+- **Do Not Disturb** (the bell icon in the system tray) hides the heads-up
+  notification. The break alert itself still appears.
+- **Start automatically when I log in** shows up in *System Settings → Autostart* as
+  "BackAtIt (background)". Removing it there is the same as switching it off
+  in the app.
+- **Plasma 5** (older Kubuntu, Debian 12) has not been tested. If its
+  compositor lacks the Wayland idle protocol, "skip the break if I'm away"
+  falls back to noticing you are away only once Plasma itself dims the
+  screen. The log says which source it uses (see below).
+</details>
+
+<details>
+<summary><b>XFCE, MATE, Cinnamon, Budgie</b> — Xubuntu, Linux Mint, Ubuntu MATE, Ubuntu Budgie</summary>
+
+- Nothing to change. These run on X11, where the alert, the lock and away
+  detection all use standard X11 features.
+- "Skip the break if I'm away" needs the small **libXss** library. The
+  packages pull it in automatically; with `install.sh` add it yourself if
+  breaks never get skipped: `libxss1` (Debian, Ubuntu, Mint),
+  `libXScrnSaver` (Fedora), `libXss1` (openSUSE), `libxss` (Arch).
+- A notification daemon must be running for the heads-up to show
+  (`xfce4-notifyd`, `mate-notification-daemon` — installed by default).
+</details>
+
+<details>
+<summary><b>Sway, Hyprland and other tiling setups</b> — best effort</summary>
+
+- Needs **XWayland** for the alert to stay on top and for the locked break to
+  hold the keyboard. Without it the alert still covers the screen, but the
+  lock cannot be taken.
+- Needs a notification daemon such as `mako` or `dunst` for the heads-up.
+- Away detection works through the Wayland idle protocol.
+</details>
+
+### If something does not work
+
+The background app keeps a log of what it is doing:
+
+```sh
+cat "$XDG_RUNTIME_DIR/backatit/daemon.log"
+```
+
+| You see | Meaning |
+|---|---|
+| `away check: 0 sec idle (source: none)` every time | nothing on this desktop reports idle time; breaks always fire. See your desktop's notes above. |
+| `away check: … (source: wayland)` / `mutter` / `x11` / `logind` | which source away detection is using |
+| `input locked` | the locked break holds the keyboard and mouse |
+| `could not lock input (…)` | the lock was refused; the alert still covers the screen. Usually a session with no XWayland. |
+| `idle watcher started` | away detection on Wayland is running |
+
+To remove BackAtIt and everything it left behind (settings, statistics,
+autostart), run `./purge.sh` from a copy of the source — `--dry-run` shows the
+list first.
+
+---
+
 ## Why this exists
 
 This started with back pain.

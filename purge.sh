@@ -29,9 +29,15 @@ echo
 
 echo "Running processes:"
 found=0
-for pat in 'alarmd\.sh' 'settings\.py' 'alert\.py'; do
+# Match on an actual argument that IS one of our scripts inside a backatit
+# directory - not on the words appearing anywhere in a command line. Loose
+# matching once caught the very shell that had launched this script, because
+# its command line happened to mention idle.py and backatit.
+for pat in 'alarmd\.sh' 'settings\.py' 'alert\.py' 'idle\.py'; do
     for pid in $(pgrep -f "$pat" 2>/dev/null); do
-        tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q 'backatit\|backatit' || continue
+        [ "$pid" = "$$" ] || [ "$pid" = "$PPID" ] && continue
+        tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null |
+            grep -qE "/backatit/$pat\$" || continue
         found=1
         if [ "$DRY" = 1 ]; then echo "  would stop    pid $pid"
         else kill "$pid" 2>/dev/null && echo "  stopped       pid $pid"; fi
@@ -50,6 +56,16 @@ if dpkg -l backatit break-reminder 2>/dev/null | grep -q '^ii'; then
             echo "  !! could not remove the package; run it yourself:" >&2
             echo "     sudo apt-get purge -y backatit break-reminder" >&2; }
     fi
+elif rpm -q backatit >/dev/null 2>&1; then
+    if [ "$DRY" = 1 ]; then echo "  would run     sudo dnf remove -y backatit  (zypper on openSUSE)"
+    else
+        rm_cmd="sudo dnf remove -y backatit"
+        command -v dnf >/dev/null 2>&1 || rm_cmd="sudo zypper --non-interactive remove backatit"
+        echo "  running       $rm_cmd"
+        $rm_cmd || {
+            echo "  !! could not remove the package; run it yourself:" >&2
+            echo "     $rm_cmd" >&2; }
+    fi
 else
     echo "  not installed"
 fi
@@ -60,7 +76,8 @@ any=0
 for p in "$HOME/.local/lib/backatit" "$HOME/.local/bin/backatit" \
          "$HOME/.local/share/applications/backatit.desktop" \
          "$HOME/.local/share/icons/hicolor/scalable/apps/backatit.svg" \
-         "$HOME/.local/share/metainfo/backatit.metainfo.xml"; do
+         "$HOME/.local/share/metainfo/backatit.metainfo.xml" \
+         "$HOME"/.local/share/icons/hicolor/*/apps/backatit.png; do
     [ -e "$p" ] && { gone "$p"; any=1; }
 done
 [ "$any" = 0 ] && echo "  nothing there"
