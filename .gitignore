@@ -9,3 +9,6 @@ __pycache__/
 *~
 .*.swp
 .DS_Store
+*.rpm
+*.tar.gz
+dist/

@@ -355,9 +355,28 @@ is_active() {
     [ -f "$MANUAL_FLAG" ] || in_schedule
 }
 
-# Seconds since you last touched the mouse or keyboard. GNOME on Wayland has
-# no X11 idle timer, so this asks Mutter directly.
-idle_sec() {
+# ---------------- idle time ----------------
+#
+# Seconds since you last touched the mouse or keyboard. There is no one way to
+# ask that on Linux, so each desktop family gets the source it actually has,
+# tried in order until one answers:
+#
+#   mutter   GNOME (Wayland or X11) - Mutter's own idle monitor over D-Bus
+#   wayland  KDE Plasma 6, Sway, Hyprland ... - the ext-idle-notify protocol,
+#            through the watcher idle.py keeps running beside the daemon
+#   x11      XFCE, MATE, Cinnamon, Budgie, any X11 session - MIT-SCREEN-SAVER
+#   logind   last resort: the session's idle flag. Coarse - it only flips when
+#            the desktop itself decides you are idle (screen dimming)
+#
+# KDE's freedesktop ScreenSaver GetSessionIdleTime is deliberately not on the
+# list: on Wayland it answers "not supported", and the implementations that do
+# answer disagree on whether the number is seconds or milliseconds.
+#
+# Nothing answering means 0 - assume present, so we never go silent by mistake.
+IDLE_STATE="$STATE_DIR/idle_state"   # written by `idle.py watch`
+IDLE_WATCH_PID="$STATE_DIR/idle_watch.pid"
+
+idle_mutter() {
     local out
     out=$(gdbus call --session --dest org.gnome.Mutter.IdleMonitor \
             --object-path /org/gnome/Mutter/IdleMonitor/Core \
@@ -365,11 +384,95 @@ idle_sec() {
     # Anchor on "uint64 " — a bare ([0-9]+) matches the 64 in the type name
     # itself, which silently pinned the idle time at 0 and stopped the
     # skip-when-away check from ever firing.
-    if [[ "$out" =~ uint64\ ([0-9]+) ]]; then
-        echo $(( BASH_REMATCH[1] / 1000 ))
-    else
-        echo 0            # cannot tell => assume present, so we never go silent
-    fi
+    [[ "$out" =~ uint64\ ([0-9]+) ]] || return 1
+    echo $(( BASH_REMATCH[1] / 1000 ))
+}
+
+# Only trusted while the watcher that writes it is alive: a file left by one
+# that died would otherwise freeze the reading at whatever it last said.
+idle_wayland() {
+    idle_watch_running || return 1
+    local st
+    st=$(cat "$IDLE_STATE" 2>/dev/null) || return 1
+    case "$st" in
+        active) echo 0 ;;
+        "idle "*)
+            local since=${st#idle } now
+            [[ "$since" =~ ^[0-9]+$ ]] || return 1
+            now=$(date +%s)
+            [ "$now" -ge "$since" ] && echo $(( now - since )) || echo 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+idle_x11() {
+    [ -n "${DISPLAY:-}" ] || return 1
+    # A Wayland session's XWayland has no idle extension; skip the Python start.
+    [ "${XDG_SESSION_TYPE:-}" = wayland ] && return 1
+    local out
+    out=$(python3 "$APP_DIR/idle.py" x11 2>/dev/null) || return 1
+    [[ "$out" =~ ^[0-9]+$ ]] || return 1
+    echo "$out"
+}
+
+idle_logind() {
+    local sid=${XDG_SESSION_ID:-} out hint since now
+    [ -n "$sid" ] || return 1
+    command -v loginctl >/dev/null 2>&1 || return 1
+    out=$(loginctl show-session "$sid" -p IdleHint -p IdleSinceHint 2>/dev/null) || return 1
+    hint=$(sed -n 's/^IdleHint=//p' <<< "$out")
+    since=$(sed -n 's/^IdleSinceHint=//p' <<< "$out")
+    case "$hint" in
+        no) echo 0 ;;
+        yes)
+            [[ "$since" =~ ^[0-9]+$ ]] && [ "$since" -gt 0 ] || return 1
+            now=$(date +%s)
+            echo $(( now - since / 1000000 )) ;;
+        *) return 1 ;;
+    esac
+}
+
+# "<seconds> <source>", e.g. "312 wayland" - or "0 none".
+idle_probe() {
+    local b s
+    for b in mutter wayland x11 logind; do
+        if s=$("idle_$b"); then
+            echo "$s $b"
+            return 0
+        fi
+    done
+    echo "0 none"
+}
+
+idle_sec() {
+    local r
+    r=$(idle_probe)
+    echo "${r%% *}"
+}
+
+idle_watch_running() {
+    local pid
+    pid=$(cat "$IDLE_WATCH_PID" 2>/dev/null)
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+    tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q 'idle\.py watch'
+}
+
+# Started by the daemon, as its own child: the watcher notices the daemon is
+# gone and exits by itself, so even a kill -9 does not leave it behind.
+# Only worth running on Wayland where Mutter is not there to ask instead.
+start_idle_watch() {
+    [ -n "${WAYLAND_DISPLAY:-}" ] || return 1
+    idle_mutter >/dev/null && return 1
+    idle_watch_running && return 0
+    python3 "$APP_DIR/idle.py" watch "$IDLE_STATE" >/dev/null 2>&1 < /dev/null &
+    echo $! > "$IDLE_WATCH_PID"
+    return 0
+}
+
+stop_idle_watch() {
+    idle_watch_running && kill "$(cat "$IDLE_WATCH_PID")" 2>/dev/null
+    rm -f "$IDLE_WATCH_PID" "$IDLE_STATE"
 }
 
 user_is_away() {
@@ -504,9 +607,45 @@ play_once() {
     "${cmd[@]}" "$SOUND" 2>/dev/null
 }
 
+# Desktop notifications clean up after themselves. Every one is marked
+# transient, which the freedesktop spec defines as "show it, then drop it -
+# never keep it in the history" (honoured by GNOME, KDE, XFCE, Cinnamon, MATE
+# and Budgie alike). Without it, KDE in particular kept every "Break coming up"
+# in its notification list until there was a long column of them.
+#
+# Each one also replaces the one before, so a desktop that ignores the hint
+# still never shows more than one of ours. How long one stays on screen is left
+# to the desktop.
+NOTIFY_ID_FILE="$STATE_DIR/notify_id"
+
+# notify-send learnt --print-id/--replace-id in 0.7.10; Ubuntu 22.04 ships
+# 0.7.9. Ask it rather than parse a version, and remember the answer.
+notify_can_replace() {
+    if [ -z "${_NOTIFY_REPLACE:-}" ]; then
+        if notify-send --help 2>/dev/null | grep -q -- '--replace-id'; then
+            _NOTIFY_REPLACE=yes
+        else
+            _NOTIFY_REPLACE=no
+        fi
+    fi
+    [ "$_NOTIFY_REPLACE" = yes ]
+}
+
 notify() {
     command -v notify-send >/dev/null 2>&1 || return 0
-    notify-send -a "BackAtIt" -i alarm-clock "$1" "$2" 2>/dev/null
+    local -a cmd=(notify-send -a "BackAtIt" -i alarm-clock
+                  -h boolean:transient:true
+                  -h string:desktop-entry:backatit)
+    if notify_can_replace; then
+        local old new
+        old=$(cat "$NOTIFY_ID_FILE" 2>/dev/null)
+        [[ "$old" =~ ^[0-9]+$ ]] && [ "$old" -gt 0 ] && cmd+=(-r "$old")
+        new=$("${cmd[@]}" -p "$1" "$2" 2>/dev/null)
+        [[ "$new" =~ ^[0-9]+$ ]] && echo "$new" > "$NOTIFY_ID_FILE"
+    else
+        "${cmd[@]}" "$1" "$2" 2>/dev/null
+    fi
+    return 0
 }
 
 # ---------------- the alert ----------------
@@ -522,8 +661,9 @@ show_alert() {
     [ "$FULLSCREEN" = "1" ] && cmd+=(--fullscreen)
     cmd+=("$@")
 
-    # GNOME on Wayland will not let a window raise itself above the one you are
-    # using. Under XWayland the keep-above hint is honoured, so prefer it.
+    # Wayland compositors (GNOME, KDE) will not let a window raise itself above
+    # the one you are using. Under XWayland the keep-above hint is honoured,
+    # and the input lock can hold Super and Alt-Tab, so prefer it.
     if [ -n "$DISPLAY" ]; then
         GDK_BACKEND=x11 "${cmd[@]}"
     else

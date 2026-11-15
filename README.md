@@ -19,31 +19,40 @@ one that also tells you when the break is over.
 
 ## Download
 
-Grab the `.deb` from the [**latest release**](https://github.com/akashmony01/BackAtIt/releases/latest),
-then:
+Pick the file for your distribution from the
+[**latest release**](https://github.com/akashmony01/BackAtIt/releases/latest).
+It works the same on GNOME, KDE Plasma, XFCE, Cinnamon, MATE and Budgie; the
+package only depends on which distribution you run.
+
+**Ubuntu, Debian, Linux Mint, Pop!_OS** (any desktop):
 
 ```sh
-sudo apt install ./backatit_1.6_all.deb
+wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_2.0_all.deb
+sudo apt install ./backatit_2.0_all.deb
 ```
 
-Or straight from the terminal, without opening a browser:
+**Fedora, openSUSE** (any desktop):
 
 ```sh
-wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_1.6_all.deb
-sudo apt install ./backatit_1.6_all.deb
+wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0-1.noarch.rpm
+sudo dnf install ./backatit-2.0-1.noarch.rpm      # openSUSE: sudo zypper install ./backatit-2.0-1.noarch.rpm
 ```
 
-<sub>That command names a version explicitly; check
+**Anything else** (Arch, Manjaro, …):
+
+```sh
+wget https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0.tar.gz
+tar xzf backatit-2.0.tar.gz && cd backatit-2.0 && ./install.sh
+```
+
+<sub>Those commands name a version explicitly; check
 [releases](https://github.com/akashmony01/BackAtIt/releases/latest) for the
-current filename if a newer one is out.</sub>
+current filenames if a newer one is out.</sub>
 
-Works on Debian, Ubuntu, Mint and anything else `apt`-based. `apt` pulls in
-GTK and the other dependencies itself. Remove it later with
-`sudo apt remove backatit`.
-
-Not on a `.deb` distro, or would rather build it yourself? See
-[Install](#install) below — it is a shell and Python app, so there is nothing
-to compile.
+The package manager pulls in GTK and the other dependencies itself. Remove it
+later with `sudo apt remove backatit` or `sudo dnf remove backatit`.
+`install.sh` checks what is missing first and prints the exact install command
+for your distribution.
 
 ---
 
@@ -112,17 +121,15 @@ Everything about it bends to how you actually work.
 
 ## Install
 
-### From the package (Debian, Ubuntu, Mint)
+### From a package
 
-Either download it from [releases](https://github.com/akashmony01/BackAtIt/releases/latest),
-or build it yourself from a clone:
+Download one from [releases](https://github.com/akashmony01/BackAtIt/releases/latest)
+(see [Download](#download)), or build it yourself from a clone:
 
 ```sh
-./build-deb.sh
-sudo apt install ./backatit_1.6_all.deb
+./build-deb.sh     # -> backatit_2.0_all.deb       needs dpkg-dev, fakeroot
+./build-rpm.sh     # -> backatit-2.0-1.noarch.rpm  needs rpm-build
 ```
-
-Remove it with `sudo apt remove backatit`.
 
 ### From source (any Linux)
 
@@ -132,8 +139,8 @@ sudo ./install.sh --system   # for everyone       (/usr/local)
 ./install.sh --uninstall     # remove it again
 ```
 
-`install.sh` checks what is missing first and prints the package names for
-Debian, Ubuntu, Fedora and Arch.
+`install.sh` checks what is missing first and prints the install command for
+your distribution (apt, dnf, zypper or pacman).
 
 ### Requirements
 
@@ -142,13 +149,14 @@ Debian, Ubuntu, Fedora and Arch.
 | `bash`, `python3`, `python3-gi` + GTK 3 | the window and the alerts |
 | `pw-play` (PipeWire), `paplay` or `aplay` | the sound |
 | `notify-send` (libnotify) | the heads-up notifications |
-| `gdbus` (glib) | away detection — GNOME only |
+| `gdbus` (glib) | away detection on GNOME |
 
-On Debian or Ubuntu:
-
-```sh
-sudo apt install python3-gi gir1.2-gtk-3.0 libnotify-bin pipewire-bin
-```
+| Distribution | Command |
+|---|---|
+| Debian, Ubuntu, Mint | `sudo apt install python3-gi gir1.2-gtk-3.0 libnotify-bin pipewire-bin` |
+| Fedora | `sudo dnf install python3-gobject gtk3 libnotify pipewire-utils` |
+| openSUSE | `sudo zypper install python3-gobject python3-gobject-Gdk typelib-1_0-Gtk-3_0 libnotify-tools pipewire-tools` |
+| Arch, Manjaro | `sudo pacman -S python-gobject gtk3 libnotify pipewire` |
 
 ---
 
@@ -213,11 +221,13 @@ your comments alone.
 | Script | Does |
 |---|---|
 | `./install.sh` | install or uninstall from source |
-| `./build-deb.sh` | build a `.deb` (`VERSION=1.6 ./build-deb.sh`) |
+| `./build-deb.sh` | build a `.deb` (`VERSION=2.0 ./build-deb.sh`) |
+| `./build-rpm.sh` | build an `.rpm` |
+| `./build-tarball.sh` | build the source tarball |
 | `./make-icons.sh` | regenerate icon sizes from `logo.png` |
 | `./demo-stats.sh on` | fill the stats page with sample data (`off` restores) |
 | `./purge.sh --dry-run` | list every trace of the app on the machine |
-| `./tests/run.sh` | run the test suite (17 suites, sandboxed) |
+| `./tests/run.sh` | run the test suite (18 suites, sandboxed) |
 
 Your name, email and version live in `about.conf`, which the About card, the
 package metadata and the licence all read from.
@@ -228,8 +238,8 @@ package metadata and the licence all read from.
 ./tests/run.sh
 ```
 
-Seventeen suites covering the schedule and days-off logic, config parsing and
-quoting, the daemon's lifecycle, the alert window and its buzzer, the locked
+Eighteen suites covering the schedule and days-off logic, config parsing and
+quoting, the daemon's lifecycle, idle detection on every desktop, the alert window and its buzzer, the locked
 break and its exit codes, and the settings window. They run against sandboxed
 copies of the config, statistics and runtime state, so your real settings are
 never touched — and the locked-break suites never take the input lock, so a
@@ -243,26 +253,56 @@ alarmd.sh      the background app: timing, scheduling, firing alerts
 settings.py    the settings window (GTK 3)
 alert.py       the full-screen alert window
 alertctl.sh    shows one alert on demand, for the Test buttons
-lib.sh         shared shell helpers: config, schedule, sound, stats
+lib.sh         shared shell helpers: config, schedule, sound, stats, idle time
+idle.py        idle time on Wayland (KDE, Sway, …) and X11 desktops
+deps.sh        what to install, per distribution
+stage.sh       the package layout shared by build-deb.sh and build-rpm.sh
 ```
+
+### Releasing
+
+Releases build and publish themselves. Bump `APP_VERSION` in `about.conf`, add
+a `## <version>` section to `CHANGELOG.md`, commit, then:
+
+```sh
+git tag v2.0
+git push origin main v2.0
+```
+
+The [release workflow](.github/workflows/release.yml) checks the tag matches
+`about.conf`, runs the whole test suite, builds the `.deb`, `.rpm` and
+tarball, and publishes the release with that changelog section as its notes.
+If any step fails, nothing is published.
 
 ---
 
-## Portability
+## Desktop notes
 
-Written against the freedesktop desktop standards, so it should run on GNOME,
-KDE, XFCE, Cinnamon and the rest. Two things are GNOME-specific and degrade
-quietly elsewhere:
+Supported: **GNOME, KDE Plasma, XFCE, Cinnamon, MATE and Budgie**, on Wayland
+or X11. Tiling compositors (Sway, Hyprland, …) are best effort. Everything is
+written against the freedesktop standards; where a desktop has no standard
+answer, it gets its own:
 
-- **Away detection** asks GNOME's idle monitor. Off GNOME it reads zero, which
-  means "you are here" — so breaks always fire and nothing is skipped.
-- **The full-screen alert** prefers XWayland so it can stay on top. Under other
-  compositors it still goes full screen.
-- **Locking the screen for the break** claims the mouse and keyboard through
-  XWayland, which is what stops Super and Alt-Tab getting past it. In a session
-  with no X server at all the claim is refused, and the lock quietly falls back
-  to what an ordinary alert does — covering the screen and ignoring the
-  keyboard. It says so on standard error rather than pretending.
+| | GNOME | KDE Plasma 6 | XFCE, MATE, Cinnamon, Budgie (X11) |
+|---|---|---|---|
+| Full-screen alert on top | ✓ | ✓ | ✓ |
+| Locked break holds keyboard and mouse | ✓ | ✓ | ✓ |
+| "Skip if I'm away" reads idle time from | Mutter | Wayland idle protocol | X11 screensaver extension |
+| Notifications clear themselves | ✓ | ✓ | ✓ |
+
+- **Away detection** tries, in order: GNOME's idle monitor, the Wayland idle
+  protocol (a small watcher runs beside the background app), the X11
+  screensaver extension, and the login session's idle flag. If none answers it
+  reads zero — "you are here" — so breaks fire rather than being skipped.
+- **The locked break** claims the mouse and keyboard through XWayland, which
+  is what stops Super and Alt-Tab getting past it. In a session with no X
+  server at all the claim is refused, and the lock falls back to what an
+  ordinary alert does — covering the screen and ignoring the keyboard. It says
+  so on standard error rather than pretending.
+- **Tested by hand** on GNOME (Ubuntu) and KDE Plasma 6.8 (Fedora 45). The
+  X11 desktops rely on the same standards but have not been checked on a real
+  machine yet, and blanking extra monitors during a locked break has only been
+  tried on GNOME.
 
 It does **not** run on Windows. The background app is bash, sound goes through
 PipeWire, away detection through D-Bus, and start-at-login through

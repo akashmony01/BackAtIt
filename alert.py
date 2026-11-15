@@ -347,8 +347,8 @@ class Blocker(Gtk.Window):
 class Lock:
     """Exclusive claim on the mouse and keyboard, with its own way out.
 
-    Covering the screen is not enough on its own: GNOME handles Super and
-    Alt-Tab before any application sees them, so a window that merely sits on
+    Covering the screen is not enough on its own: the desktop (GNOME, KDE,
+    ...) handles Super and Alt-Tab before any application sees them, so a window that merely sits on
     top is one keypress away from being stepped around. Grabbing the seat
     takes those too.
 
@@ -364,6 +364,7 @@ class Lock:
         self.enabled = enabled
         self.seat = None
         self.held = False
+        self.last_status = None
         self._timer = None
 
     def take(self, gdk_window):
@@ -381,9 +382,9 @@ class Lock:
             # argument is part of the signature.
             status = seat.grab(gdk_window, Gdk.SeatCapabilities.ALL,
                                False, None, None, None)
+        self.last_status = status.value_nick
         if status != Gdk.GrabStatus.SUCCESS:
-            print("backatit: could not lock input (%s); the alert still covers "
-                  "the screen" % status, file=sys.stderr)
+            # Reported by the caller, which may still retry a not-viewable one.
             return False
         self.seat = seat
         self.held = True
@@ -428,6 +429,8 @@ class Alert(Gtk.Window):
         self._count_id = None
         self._hold_id = None
         self._hold_at = 0.0
+        self._lock_started = False
+        self._lock_tries = 0
 
         # The ceiling covers the whole locked stretch plus a margin, so a
         # slow-but-alive process is never cut loose early.
@@ -651,6 +654,14 @@ class Alert(Gtk.Window):
 
     # -- behaviour ------------------------------------------------------
     def run(self):
+        if self.args.lock:
+            # Wait for the window to actually be on screen before grabbing.
+            # Mutter has mapped it by the first idle tick after show(); KWin
+            # has not, and a grab on an unmapped window is refused
+            # (NOT_VIEWABLE) - which used to leave the whole locked break
+            # running with no lock at all. Connected before show_all so the
+            # map cannot slip past unobserved.
+            self.connect("map-event", self._on_mapped)
         self.show_all()
         self.present()
         if self.args.lock and self.args.all_monitors:
@@ -662,17 +673,38 @@ class Alert(Gtk.Window):
             self._enter_countdown()
         self._start_grace()
         self.buzzer.start()
-        if self.args.lock:
-            # After the window is on screen: there is nothing to grab input
-            # for until it has been mapped.
-            GLib.idle_add(self._take_lock)
         Gtk.main()
         self.lock.release()
         self._close_blockers()
         return self.result
 
+    # A compositor can report the map a moment before the window is viewable
+    # to the X server, so a refused grab is retried briefly before giving up.
+    LOCK_RETRIES = 20
+    LOCK_RETRY_MS = 100
+
+    def _on_mapped(self, *_):
+        if not self._lock_started:
+            self._lock_started = True
+            self._lock_tries = 0
+            GLib.idle_add(self._take_lock)
+        return False
+
     def _take_lock(self):
-        self.lock.take(self.get_window())
+        # The walk stage hands the machine back, so a late map must not take
+        # the lock again once the break is already over.
+        if self.lock.held or self.phase == "walk":
+            return False
+        if self.lock.take(self.get_window()):
+            print("backatit: input locked", file=sys.stderr)
+            return False
+        self._lock_tries += 1
+        if (self.lock.enabled and self.lock.last_status == "not-viewable"
+                and self._lock_tries < self.LOCK_RETRIES):
+            GLib.timeout_add(self.LOCK_RETRY_MS, self._take_lock)
+        elif self.lock.enabled:
+            print("backatit: could not lock input (%s); the alert still covers "
+                  "the screen" % self.lock.last_status, file=sys.stderr)
         return False
 
     def _open_blockers(self):

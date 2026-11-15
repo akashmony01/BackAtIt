@@ -1,0 +1,107 @@
+# Pushing a version tag publishes a release:
+#
+#   1. bump APP_VERSION in about.conf and add a "## <version>" section to
+#      CHANGELOG.md, commit
+#   2. git tag v2.0 && git push origin main v2.0
+#
+# The tag must match about.conf and the changelog must have a section for it,
+# the whole test suite must pass, and only then are the .deb, .rpm and source
+# tarball built and attached to a new GitHub release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check version and changelog
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Tag matches about.conf
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          . ./about.conf
+          if [ "$tag" != "$APP_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match APP_VERSION=$APP_VERSION in about.conf"
+            exit 1
+          fi
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+      - name: CHANGELOG has a section for it
+        run: |
+          ./tools/changelog-section.sh "${{ steps.v.outputs.version }}" > notes.md
+          echo "Release notes:"; cat notes.md
+
+  test:
+    name: Test suite
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install what the app and the GUI tests need
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-gi gir1.2-gtk-3.0 libnotify-bin \
+            pipewire-bin sound-theme-freedesktop libglib2.0-bin \
+            xvfb xauth dbus-x11 openbox
+      # Fullscreen is carried out by a window manager, and a bare Xvfb has
+      # none, so a small one runs inside the virtual display.
+      - name: Run tests on a virtual display
+        env:
+          NO_AT_BRIDGE: "1"
+        run: |
+          xvfb-run -a dbus-run-session -- bash -c \
+            'openbox >/dev/null 2>&1 & sleep 1; bash tests/run.sh'
+
+  build:
+    name: Build packages
+    needs: [check, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dpkg-dev fakeroot rpm
+      - name: Build .deb, .rpm and source tarball
+        run: |
+          mkdir -p dist
+          OUTDIR=dist ./build-deb.sh
+          OUTDIR=dist ./build-rpm.sh
+          OUTDIR=dist ./build-tarball.sh
+          ls -l dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: dist
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          ./tools/changelog-section.sh "$VERSION" > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "BackAtIt $VERSION" \
+            --notes-file notes.md \
+            --verify-tag

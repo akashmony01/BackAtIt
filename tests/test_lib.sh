@@ -183,6 +183,10 @@ ck "summary counts it" "$(stats_summary)" "Today: 2 taken, 1 snoozed, 1 skipped,
 ( STATS_FILE=/nonexistent/x.tsv; [ "$(stat_today taken)" = "0" ] ) && echo "  ok   missing stats file -> 0" || { echo "  FAIL missing stats file"; fail=1; }
 
 echo "=== away detection (must not be fooled by the 64 in uint64) ==="
+# Only Mutter answers in this block; the other sources are silenced so the
+# machine running the suite cannot leak its own idle time in.
+_pre_idle=$(declare -f idle_wayland idle_x11 idle_logind)
+idle_wayland() { return 1; }; idle_x11() { return 1; }; idle_logind() { return 1; }
 idle() { eval "gdbus() { echo '$1'; }"; local g; g=$(idle_sec); unset -f gdbus; ck "$2" "$g" "$3"; }
 idle "(uint64 44793,)"   "44793 ms -> 44 s"  44
 idle "(uint64 300000,)"  "5 min idle"        300
@@ -194,6 +198,48 @@ IDLE_SKIP=1; IDLE_SEC=300; user_is_away && echo "  ok   400s idle >= 300s -> awa
 IDLE_SEC=600; user_is_away && { echo "  FAIL 400s should not exceed 600s"; fail=1; } || echo "  ok   400s idle < 600s -> present"
 IDLE_SKIP=0; IDLE_SEC=0; user_is_away && { echo "  FAIL off switch ignored"; fail=1; } || echo "  ok   IDLE_SKIP=0 disables the check"
 unset -f gdbus
+eval "$_pre_idle"
+
+echo "=== idle sources: first one that answers wins ==="
+# Snapshot the real definitions so stubbing them is reversible without
+# re-sourcing lib.sh, which would point the sandboxed paths back at real ones.
+_real_idle=$(declare -f idle_mutter idle_wayland idle_x11 idle_logind idle_watch_running)
+idle_mutter()  { echo 11; }; idle_wayland() { echo 22; }; idle_x11() { echo 33; }; idle_logind() { echo 44; }
+ck "mutter first"            "$(idle_probe)" "11 mutter"
+idle_mutter()  { return 1; }
+ck "then the wayland watcher" "$(idle_probe)" "22 wayland"
+idle_wayland() { return 1; }
+ck "then x11"                "$(idle_probe)" "33 x11"
+idle_x11()     { return 1; }
+ck "then logind"             "$(idle_probe)" "44 logind"
+idle_logind()  { return 1; }
+ck "nothing -> 0, never silent" "$(idle_probe)" "0 none"
+ck "idle_sec is the number"  "$(idle_sec)" 0
+eval "$_real_idle"
+
+echo "=== the wayland watcher's state file ==="
+IDLE_STATE="$STATE_DIR/idle_state"
+idle_watch_running() { return 0; }
+echo active > "$IDLE_STATE";                         ck "active -> 0"        "$(idle_wayland)" 0
+echo "idle $(( $(date +%s) - 400 ))" > "$IDLE_STATE"; ck "idle since 400s ago" "$(idle_wayland)" 400
+echo "idle $(( $(date +%s) + 50 ))" > "$IDLE_STATE";  ck "clock skew -> 0"     "$(idle_wayland)" 0
+echo "idle soon" > "$IDLE_STATE"; idle_wayland >/dev/null && { echo "  FAIL junk accepted"; fail=1; } || echo "  ok   junk state ignored"
+rm -f "$IDLE_STATE"; idle_wayland >/dev/null && { echo "  FAIL missing file accepted"; fail=1; } || echo "  ok   no state file -> next source"
+echo "idle 1" > "$IDLE_STATE"
+idle_watch_running() { return 1; }
+idle_wayland >/dev/null && { echo "  FAIL dead watcher trusted"; fail=1; } || echo "  ok   a dead watcher's file is not trusted"
+rm -f "$IDLE_STATE"
+eval "$_real_idle"
+
+echo "=== logind idle flag ==="
+_lsid=${XDG_SESSION_ID:-}; XDG_SESSION_ID=c1
+loginctl() { printf 'IdleHint=no\nIdleSinceHint=0\n'; }
+ck "not idle -> 0" "$(idle_logind)" 0
+loginctl() { printf 'IdleHint=yes\nIdleSinceHint=%s\n' "$(( ($(date +%s) - 600) * 1000000 ))"; }
+ck "idle since 10 min" "$(idle_logind)" 600
+loginctl() { return 1; }
+idle_logind >/dev/null && { echo "  FAIL broken loginctl accepted"; fail=1; } || echo "  ok   loginctl failing -> next source"
+unset -f loginctl; XDG_SESSION_ID=$_lsid
 
 echo "=== sound helpers ==="
 SOUND=/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga
@@ -226,5 +272,42 @@ load_config
 ck "LOCK_BREAK written and read back"        "$LOCK_BREAK"        1
 ck "LOCK_ALL_MONITORS written and read back" "$LOCK_ALL_MONITORS" 0
 rm -f "$CONFIG"; CONFIG=$_saved_cfg
+
+echo "=== notifications clear themselves and replace each other ==="
+# A stand-in notify-send that records its arguments and hands out ids, so no
+# real notification reaches the desktop of whoever runs this.
+_stub=$(mktemp -d); _calls="$_stub/calls"
+cat > "$_stub/notify-send" <<'EOF'
+#!/bin/bash
+if [ "$1" = --help ]; then
+    [ "${STUB_OLD:-}" = 1 ] && echo "  -h, --hint" || echo "  -r, --replace-id=ID"
+    exit 0
+fi
+printf '%s\n' "$*" >> "$STUB_CALLS"
+for a in "$@"; do [ "$a" = -p ] && { n=$(( $(wc -l < "$STUB_CALLS") + 40 )); echo "$n"; }; done
+exit 0
+EOF
+chmod +x "$_stub/notify-send"
+_old_path=$PATH; PATH="$_stub:$PATH"; export STUB_CALLS=$_calls
+NOTIFY_ID_FILE="$STATE_DIR/notify_id"; rm -f "$NOTIFY_ID_FILE"; unset _NOTIFY_REPLACE
+notify "Break coming up" "Break in about 2 min."
+notify "Break reminder is ON" "Next break at 10:30"
+first=$(sed -n 1p "$_calls"); second=$(sed -n 2p "$_calls")
+[[ "$first" == *"boolean:transient:true"* ]] && echo "  ok   marked transient" || { echo "  FAIL not transient: $first"; fail=1; }
+[[ "$first" == *"string:desktop-entry:backatit"* ]] && echo "  ok   names its desktop entry" || { echo "  FAIL no desktop-entry: $first"; fail=1; }
+[[ "$first" != *" -r "* ]] && echo "  ok   first one replaces nothing" || { echo "  FAIL first replaced: $first"; fail=1; }
+[[ "$second" == *" -r 41 "* ]] && echo "  ok   second replaces the first" || { echo "  FAIL no replace: $second"; fail=1; }
+ck "latest id remembered" "$(cat "$NOTIFY_ID_FILE")" 42
+[[ "$first" == *"Break coming up Break in about 2 min." ]] && echo "  ok   title and body passed through" || { echo "  FAIL text: $first"; fail=1; }
+echo junk > "$NOTIFY_ID_FILE"; : > "$_calls"
+notify "a" "b"
+[[ "$(cat "$_calls")" != *" -r "* ]] && echo "  ok   a corrupt id is ignored" || { echo "  FAIL replaced junk id"; fail=1; }
+# An old notify-send without --replace-id still gets the transient hint.
+unset _NOTIFY_REPLACE; export STUB_OLD=1; : > "$_calls"
+notify "a" "b"
+line=$(cat "$_calls")
+[[ "$line" == *"transient:true"* && "$line" != *" -p "* ]] &&
+    echo "  ok   old notify-send: transient, no replace" || { echo "  FAIL old notify-send: $line"; fail=1; }
+unset STUB_OLD _NOTIFY_REPLACE; PATH=$_old_path; rm -rf "$_stub"
 
 exit $fail

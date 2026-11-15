@@ -17,58 +17,10 @@ STAGE=$(mktemp -d)
 chmod 0755 "$STAGE"            # mktemp makes it 0700, which would ship as the mode of /
 trap 'rm -rf "$STAGE"' EXIT
 
-APP_FILES="alarm.sh alarmd.sh alertctl.sh lib.sh alert.py settings.py demo-stats.sh about.conf"
-
-LIBDIR="$STAGE/usr/lib/$PKG"
-install -d "$LIBDIR" "$STAGE/usr/bin" "$STAGE/usr/share/applications" \
-           "$STAGE/usr/share/doc/$PKG" "$STAGE/usr/share/metainfo" \
-           "$STAGE/DEBIAN"
-
-for f in $APP_FILES; do install -m 0755 "$SRC/$f" "$LIBDIR/$f"; done
-chmod 0644 "$LIBDIR/about.conf"
-install -m 0644 "$SRC/instruction.txt" "$STAGE/usr/share/doc/$PKG/instruction.txt"
-[ -f "$SRC/LICENSE" ] && install -m 0644 "$SRC/LICENSE" "$STAGE/usr/share/doc/$PKG/copyright"
-
-# Every size make-icons.sh produced: a desktop picks the exact one it needs.
-ICON_NAME=alarm-clock
-for s in 16 24 32 48 64 128 256; do
-    src_icon="$SRC/icons/hicolor/${s}x${s}/apps/$PKG.png"
-    if [ -f "$src_icon" ]; then
-        install -d "$STAGE/usr/share/icons/hicolor/${s}x${s}/apps"
-        install -m 0644 "$src_icon" "$STAGE/usr/share/icons/hicolor/${s}x${s}/apps/$PKG.png"
-        ICON_NAME=$PKG
-    fi
-done
-if [ -f "$SRC/icons/$PKG.svg" ]; then
-    install -d "$STAGE/usr/share/icons/hicolor/scalable/apps"
-    install -m 0644 "$SRC/icons/$PKG.svg" "$STAGE/usr/share/icons/hicolor/scalable/apps/$PKG.svg"
-    ICON_NAME=$PKG
-fi
-[ -f "$SRC/$PKG.metainfo.xml" ] &&
-    install -m 0644 "$SRC/$PKG.metainfo.xml" "$STAGE/usr/share/metainfo/$PKG.metainfo.xml"
-
-cat > "$STAGE/usr/bin/$PKG" <<EOF
-#!/bin/sh
-exec /usr/lib/$PKG/alarm.sh "\$@"
-EOF
-chmod 0755 "$STAGE/usr/bin/$PKG"
-
-cat > "$STAGE/usr/share/applications/$PKG.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=${APP_NAME:-BackAtIt}
-GenericName=Break timer
-Comment=Reminds you to get up and walk while you work
-Exec=/usr/lib/$PKG/alarm.sh
-Icon=$ICON_NAME
-Terminal=false
-# Ties a running window back to this entry, so the dock shows our icon.
-StartupWMClass=backatit
-Categories=Utility;
-Keywords=break;timer;health;posture;pomodoro;reminder;rsi;stretch;eyes;
-StartupNotify=true
-EOF
-chmod 0644 "$STAGE/usr/share/applications/$PKG.desktop"
+# shellcheck source=stage.sh
+. "$SRC/stage.sh"
+stage_tree "$STAGE"
+install -d "$STAGE/DEBIAN"
 
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: $PKG
@@ -78,7 +30,7 @@ Priority: optional
 Architecture: $ARCH
 Depends: bash (>= 4.4), python3 (>= 3.6), python3-gi, gir1.2-gtk-3.0,
  libglib2.0-bin, procps, util-linux
-Recommends: libnotify-bin, pipewire-bin | pulseaudio-utils | alsa-utils
+Recommends: libnotify-bin, pipewire-bin | pulseaudio-utils | alsa-utils, libxss1
 Maintainer: $MAINTAINER
 Installed-Size: $(du -sk "$STAGE" | cut -f1)
 Description: Reminds you to get up and walk while you work
@@ -91,31 +43,7 @@ Description: Reminds you to get up and walk while you work
  days off. It keeps a tally of the breaks you actually took.
 EOF
 
-# Stopping a running daemon is worth explaining, because getting it wrong is
-# invisible: the upgrade succeeds, the new files land, and the user carries on
-# being served by a daemon that read the OLD lib.sh into memory at startup and
-# will keep running it until the process dies. Nothing looks broken; the new
-# behaviour simply never appears.
-#
-# The trap is XDG_RUNTIME_DIR. lib.sh keeps its pid file under it, and `su`
-# here builds a fresh environment without one (pam_systemd is not in su's
-# stack), so lib.sh fell back to a /tmp path the real session never used,
-# found no pid file, and returned happily having stopped nothing. So set it
-# explicitly from the user's uid.
-stop_daemons_snippet() {
-    cat <<EOF
-if [ -r /usr/lib/$PKG/lib.sh ]; then
-    for home in /home/*; do
-        [ -d "\$home" ] || continue
-        user=\$(basename "\$home")
-        uid=\$(id -u "\$user" 2>/dev/null) || continue
-        [ -d "/run/user/\$uid" ] || continue
-        su "\$user" -c "XDG_RUNTIME_DIR=/run/user/\$uid; export XDG_RUNTIME_DIR; . /usr/lib/$PKG/lib.sh 2>/dev/null; stop_daemon" >/dev/null 2>&1 || true
-    done
-fi
-EOF
-}
-
+# stop_daemons_snippet (stage.sh) stops a daemon still running the old copy.
 cat > "$STAGE/DEBIAN/prerm" <<EOF
 #!/bin/sh
 set -e
@@ -143,7 +71,8 @@ exit 0
 EOF
 chmod 0755 "$STAGE/DEBIAN/postinst"
 
-OUT="$SRC/${PKG}_${VERSION}_${ARCH}.deb"
+OUTDIR=${OUTDIR:-$SRC}
+OUT="$OUTDIR/${PKG}_${VERSION}_${ARCH}.deb"
 fakeroot dpkg-deb --build "$STAGE" "$OUT" >/dev/null
 echo "Built $OUT"
 echo "Maintainer: $MAINTAINER"

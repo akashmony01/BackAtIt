@@ -29,6 +29,7 @@ claim_daemon_slot || exit 0
 log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG"; }
 
 cleanup() {
+    stop_idle_watch
     rm -f "$DAEMON_PID"
     clear_next
     exit 0
@@ -102,9 +103,26 @@ log "daemon started (pid $BASHPID)"
 clear_next
 remaining=-1        # -1 means "not counting down"
 warned=0
+idle_tried=-1000    # when (in $SECONDS) the idle watcher was last started
+
+# Outside GNOME, idle time comes from a watcher that has to be running before
+# the break is due - it cannot say how long you have been away if it only
+# started a moment ago. Keep it alive while away-skipping is on, but do not
+# hammer a compositor that does not offer the protocol: one try per 5 minutes.
+keep_idle_watch() {
+    if [ "$IDLE_SKIP" != "1" ]; then
+        idle_watch_running && stop_idle_watch
+        return
+    fi
+    idle_watch_running && return
+    [ $((SECONDS - idle_tried)) -ge 300 ] || return
+    idle_tried=$SECONDS
+    start_idle_watch && log "idle watcher started (pid $(cat "$IDLE_WATCH_PID" 2>/dev/null))"
+}
 
 while :; do
     load_config
+    keep_idle_watch
 
     if ! is_active; then
         # Clear whenever anything is still published, not only on the tick we
@@ -135,8 +153,13 @@ while :; do
     if [ "$remaining" -le 0 ]; then
         # No point alarming an empty room — if they are already away from the
         # keyboard they are already having their break.
-        if user_is_away; then
-            log "already away ($(human_dur "$(idle_sec)") idle), skipping this break"
+        probe=$(idle_probe)
+        idle_now=${probe%% *}
+        if [ "$IDLE_SKIP" = "1" ]; then
+            log "away check: $(human_dur "$idle_now") idle (source: ${probe#* })"
+        fi
+        if [ "$IDLE_SKIP" = "1" ] && [ "$idle_now" -ge "$IDLE_SEC" ]; then
+            log "already away ($(human_dur "$idle_now") idle), skipping this break"
             record_stat skipped
             remaining=$INTERVAL_SEC
             warned=0

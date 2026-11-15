@@ -1,0 +1,5 @@
+# Left out of the release tarball: drafts and write-ups, not part of the app.
+social-posts-*.md export-ignore
+building-with-claude-*.md export-ignore
+backatit.md export-ignore
+PLAN-*.md export-ignore

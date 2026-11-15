@@ -98,6 +98,48 @@ if case == "plumbing":
     ck("countdown hidden until the break starts", a.count_box.get_no_show_all(), True)
     ck("walk row hidden until the walk", a.walk_row.get_no_show_all(), True)
 
+    # The grab waits for the map, and a refused one is retried while the
+    # window is still becoming viewable (KWin maps later than Mutter does).
+    # A stand-in lock: the real one would take the input of whoever runs this.
+    class FakeLock:
+        enabled = True; held = False; ceiling = 1
+        def __init__(self, answers): self.answers = list(answers); self.calls = 0; self.last_status = None
+        def take(self, _win):
+            self.calls += 1
+            ok, self.last_status = self.answers.pop(0) if self.answers else (False, "failed")
+            self.held = ok
+            return ok
+        def release(self): self.held = False
+    b = alertmod.Alert(args_for(walk_seconds=90))
+    b.lock = FakeLock([(False, "not-viewable"), (True, "success")])
+    ck("nothing grabbed before the map", b.lock.calls, 0)
+    scheduled = []
+    real_timeout = alertmod.GLib.timeout_add
+    alertmod.GLib.timeout_add = lambda ms, fn, *a: scheduled.append(fn) or 0
+    b._on_mapped(); b._on_mapped()
+    ck("a second map does not start a second attempt", b._lock_tries, 0)
+    b._take_lock()
+    ck("a not-viewable refusal is retried", len(scheduled), 1)
+    b._take_lock()
+    ck("the retry takes the lock", b.lock.held, True)
+    b._take_lock()
+    ck("a held lock is not taken twice", b.lock.calls, 2)
+    c = alertmod.Alert(args_for(walk_seconds=90))
+    c.lock = FakeLock([(False, "already-grabbed")])
+    del scheduled[:]
+    c._take_lock()
+    ck("other refusals give up at once", scheduled, [])
+    d = alertmod.Alert(args_for(walk_seconds=90))
+    d.lock = FakeLock([(True, "success")]); d.phase = "walk"
+    d._take_lock()
+    ck("no grab once the walk has handed the machine back", d.lock.calls, 0)
+    e = alertmod.Alert(args_for(walk_seconds=90))
+    e.lock = FakeLock([(False, "not-viewable")] * 50)
+    del scheduled[:]
+    for _ in range(50): e._take_lock()
+    ck("retries stop at the cap", len(scheduled), e.LOCK_RETRIES - 1)
+    alertmod.GLib.timeout_add = real_timeout
+
 # ------------------------------------------------------------- with a window
 else:
     styled()

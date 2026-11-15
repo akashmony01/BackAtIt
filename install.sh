@@ -10,7 +10,7 @@
 set -eu
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_FILES="alarm.sh alarmd.sh alertctl.sh lib.sh alert.py settings.py demo-stats.sh instruction.txt about.conf"
+APP_FILES="alarm.sh alarmd.sh alertctl.sh lib.sh deps.sh alert.py idle.py settings.py demo-stats.sh instruction.txt about.conf"
 
 MODE=user
 ACTION=install
@@ -69,6 +69,8 @@ if [ "$ACTION" = uninstall ]; then
 fi
 
 # ---------------- check what it needs ----------------
+# shellcheck source=deps.sh
+. "$SRC/deps.sh"
 missing=""
 command -v bash    >/dev/null 2>&1 || missing="$missing bash"
 command -v python3 >/dev/null 2>&1 || missing="$missing python3"
@@ -80,12 +82,8 @@ command -v pw-play >/dev/null 2>&1 || command -v paplay >/dev/null 2>&1 ||
 if [ -n "$missing" ]; then
     echo "Missing:$missing" >&2
     echo >&2
-    echo "On Debian or Ubuntu:" >&2
-    echo "  sudo apt install python3-gi gir1.2-gtk-3.0 libnotify-bin pipewire-bin" >&2
-    echo "On Fedora:" >&2
-    echo "  sudo dnf install python3-gobject gtk3 libnotify pipewire-utils" >&2
-    echo "On Arch:" >&2
-    echo "  sudo pacman -S python-gobject gtk3 libnotify pipewire" >&2
+    echo "Install them with:" >&2
+    deps_hint | sed 's/^/  /' >&2
     exit 1
 fi
 

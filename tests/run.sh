@@ -22,6 +22,7 @@ run() {
 }
 run "lib logic"          bash test_lib.sh
 run "daemon lifecycle"   bash test_daemon.sh
+run "idle detection"     timeout 60  python3 test_idle.py
 run "config quoting"     timeout 150 python3 test_quoting.py
 run "alert window"       timeout 90  python3 test_alert.py window
 run "alert fullscreen"   timeout 90  python3 test_alert.py fullscreen
