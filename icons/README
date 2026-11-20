@@ -1,12 +1,11 @@
-Replace break-reminder.svg with your own logo.
+The app icon, in every size a desktop asks for.
 
-  - Keep the filename break-reminder.svg
-  - Square canvas, 128x128 viewBox works well
-  - SVG is preferred: it stays sharp at every size a desktop asks for
+  icons/hicolor/<size>x<size>/apps/backatit.png   16, 24, 32, 48, 64, 128, 256
 
-A PNG works too. Name it break-reminder.png at 256x256 or larger, and change
-"scalable" to "256x256" in the ICONDIR line of install.sh and build-deb.sh.
+These are generated from logo.png in the repository root. To change the logo,
+replace logo.png (square, 256x256 or larger) and run:
 
-Try it without installing:
-  cp your-logo.svg icons/break-reminder.svg
-  ./install.sh && break-reminder
+  ./make-icons.sh
+
+then rebuild the packages or reinstall. install.sh, build-deb.sh and
+build-rpm.sh all pick up whatever sizes are here.

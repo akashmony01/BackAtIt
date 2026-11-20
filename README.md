@@ -11,7 +11,12 @@ one that also tells you when the break is over.
 
 [![Latest release](https://img.shields.io/github/v/release/akashmony01/BackAtIt?label=download&style=for-the-badge)](https://github.com/akashmony01/BackAtIt/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/akashmony01/BackAtIt/total?style=for-the-badge)](https://github.com/akashmony01/BackAtIt/releases)
+[![Tests](https://img.shields.io/github/actions/workflow/status/akashmony01/BackAtIt/tests.yml?branch=main&label=tests&style=for-the-badge)](https://github.com/akashmony01/BackAtIt/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
+
+Works on **GNOME · KDE Plasma · XFCE · Cinnamon · MATE · Budgie**
+
+[Download](#download) · [Set up](#set-it-up-on-your-desktop) · [Screenshots](#screenshots) · [Features](#what-it-does) · [Uninstall](#uninstall) · [Help](#if-something-does-not-work) · [Changelog](CHANGELOG.md)
 
 </div>
 
@@ -27,36 +32,32 @@ package only depends on which distribution you run.
 **Ubuntu, Debian, Linux Mint, Pop!_OS** (any desktop):
 
 ```sh
-curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_2.1_all.deb
-sudo apt install ./backatit_2.1_all.deb
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit.deb
+sudo apt install ./backatit.deb
 ```
 
 **Fedora, openSUSE** (any desktop):
 
 ```sh
-curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.1-1.noarch.rpm
-sudo dnf install ./backatit-2.1-1.noarch.rpm      # openSUSE: sudo zypper install ./backatit-2.1-1.noarch.rpm
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit.rpm
+sudo dnf install ./backatit.rpm        # openSUSE: sudo zypper install ./backatit.rpm
 ```
 
 **Anything else** (Arch, Manjaro, …):
 
 ```sh
-curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.1.tar.gz
-tar xzf backatit-2.1.tar.gz && cd backatit-2.1 && ./install.sh
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit.tar.gz
+tar xzf backatit.tar.gz && cd backatit-*/ && ./install.sh
 ```
 
-<sub>`curl -fLO --progress-bar` downloads the file into the folder you are in, under its own
-name, replacing an earlier download rather than piling up copies (`-L`
-follows GitHub's redirect to its file server, `-f` stops on an error instead
-of saving an error page). If `curl` is missing, `sudo apt install curl` (or
-`dnf`, `zypper`, `pacman`) adds it. Those commands name a version explicitly; check
-[releases](https://github.com/akashmony01/BackAtIt/releases/latest) for the
-current filenames if a newer one is out.</sub>
+<sub>These links always fetch the newest release. `curl -fLO` saves the file in
+the folder you are in and replaces an earlier download rather than piling up
+copies. If `curl` is missing, `sudo apt install curl` (or `dnf`, `zypper`,
+`pacman`) adds it. Once installed, the downloaded file can be deleted.</sub>
 
-The package manager pulls in GTK and the other dependencies itself. Remove it
-later with `sudo apt remove backatit` or `sudo dnf remove backatit`.
+The package manager pulls in GTK and the other dependencies itself.
 `install.sh` checks what is missing first and prints the exact install command
-for your distribution.
+for your distribution. To update later, run the same commands again.
 
 ---
 
@@ -142,9 +143,24 @@ cat "$XDG_RUNTIME_DIR/backatit/daemon.log"
 | `could not lock input (…)` | the lock was refused; the alert still covers the screen. Usually a session with no XWayland. |
 | `idle watcher started` | away detection on Wayland is running |
 
-To remove BackAtIt and everything it left behind (settings, statistics,
-autostart), run `./purge.sh` from a copy of the source — `--dry-run` shows the
-list first.
+Still stuck? [Open an issue](https://github.com/akashmony01/BackAtIt/issues/new/choose)
+— the form asks for your distribution, desktop and those log lines.
+
+---
+
+## Uninstall
+
+| Installed with | Remove it with |
+|---|---|
+| `.deb` | `sudo apt remove backatit` |
+| `.rpm` | `sudo dnf remove backatit` (openSUSE: `sudo zypper remove backatit`) |
+| `install.sh` | `./install.sh --uninstall` from the same folder |
+
+That removes the app and keeps your settings and statistics, in case you come
+back. To remove **everything** — settings, statistics and the start-at-login
+entry as well — run `./purge.sh` from a copy of the source instead
+(`./purge.sh --dry-run` lists what it would remove first). It never deletes
+the source folder itself.
 
 ---
 
@@ -219,8 +235,8 @@ Download one from [releases](https://github.com/akashmony01/BackAtIt/releases/la
 (see [Download](#download)), or build it yourself from a clone:
 
 ```sh
-./build-deb.sh     # -> backatit_2.1_all.deb       needs dpkg-dev, fakeroot
-./build-rpm.sh     # -> backatit-2.1-1.noarch.rpm  needs rpm-build
+./build-deb.sh     # -> backatit_<version>_all.deb       needs dpkg-dev, fakeroot
+./build-rpm.sh     # -> backatit-<version>-1.noarch.rpm  needs rpm-build
 ```
 
 ### From source (any Linux)
@@ -314,7 +330,7 @@ your comments alone.
 | Script | Does |
 |---|---|
 | `./install.sh` | install or uninstall from source |
-| `./build-deb.sh` | build a `.deb` (`VERSION=2.1 ./build-deb.sh`) |
+| `./build-deb.sh` | build a `.deb` (version from `about.conf`) |
 | `./build-rpm.sh` | build an `.rpm` |
 | `./build-tarball.sh` | build the source tarball |
 | `./make-icons.sh` | regenerate icon sizes from `logo.png` |
@@ -322,8 +338,8 @@ your comments alone.
 | `./purge.sh --dry-run` | list every trace of the app on the machine |
 | `./tests/run.sh` | run the test suite (18 suites, sandboxed) |
 
-Your name, email and version live in `about.conf`, which the About card, the
-package metadata and the licence all read from.
+Your name, email and version live in `about.conf`, which the About card and
+the package metadata read from.
 
 ### Tests
 
@@ -358,13 +374,16 @@ Releases build and publish themselves. Bump `APP_VERSION` in `about.conf`, add
 a `## <version>` section to `CHANGELOG.md`, commit, then:
 
 ```sh
-git tag v2.0
-git push origin main v2.0
+git tag v2.2          # v + the APP_VERSION in about.conf
+git push origin main v2.2
 ```
 
 The [release workflow](.github/workflows/release.yml) checks the tag matches
 `about.conf`, runs the whole test suite, builds the `.deb`, `.rpm` and
 tarball, and publishes the release with that changelog section as its notes.
+Each file is attached twice: under its versioned name, and as
+`backatit.deb` / `backatit.rpm` / `backatit.tar.gz`, which the download
+commands above point at.
 If any step fails, nothing is published.
 
 ---
@@ -400,6 +419,18 @@ answer, it gets its own:
 It does **not** run on Windows. The background app is bash, sound goes through
 PipeWire, away detection through D-Bus, and start-at-login through
 `~/.config/autostart`. Porting means rewriting those four pieces.
+
+---
+
+## Contributing
+
+Bug reports and ideas are welcome — [open an issue](https://github.com/akashmony01/BackAtIt/issues/new/choose).
+Reports from desktops other than GNOME and KDE are especially useful, since
+those have not been tried on real machines yet.
+
+To work on the code, clone it and run `./tests/run.sh` (see
+[Working on it](#working-on-it)). Every push and pull request runs the same
+suite on GitHub.
 
 ---
 

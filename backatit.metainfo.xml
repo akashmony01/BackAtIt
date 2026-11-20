@@ -109,6 +109,15 @@
   <url type="bugtracker">https://github.com/akashmony01/BackAtIt/issues</url>
 
   <releases>
+    <release version="2.1.1" date="2026-11-21">
+      <description>
+        <p>
+          Removing a home-directory install no longer leaves GTK warning about
+          a missing icon, and the built-in guide describes away detection on
+          every supported desktop.
+        </p>
+      </description>
+    </release>
     <release version="2.1" date="2026-11-21">
       <description>
         <p>

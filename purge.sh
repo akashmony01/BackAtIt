@@ -81,6 +81,14 @@ for p in "$HOME/.local/lib/backatit" "$HOME/.local/bin/backatit" \
     [ -e "$p" ] && { gone "$p"; any=1; }
 done
 [ "$any" = 0 ] && echo "  nothing there"
+# The icon cache install.sh built still lists the icons just removed; GTK then
+# warns about them in every app that looks the name up. Rebuild it to match.
+_cache="$HOME/.local/share/icons/hicolor/icon-theme.cache"
+if [ "$any" = 1 ] && [ "$DRY" = 0 ] && [ -f "$_cache" ] &&
+   command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -qtf "$HOME/.local/share/icons/hicolor" 2>/dev/null &&
+        echo "  refreshed     the icon cache"
+fi
 
 echo
 echo "Launchers and autostart:"

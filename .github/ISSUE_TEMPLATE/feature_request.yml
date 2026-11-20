@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea that would make BackAtIt better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like it to do
+      description: Describe the situation you are in, not only the feature — it helps find the best way to solve it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How you deal with it today
+      description: A workaround, another app, or nothing at all.

@@ -77,13 +77,5 @@ fakeroot dpkg-deb --build "$STAGE" "$OUT" >/dev/null
 echo "Built $OUT"
 echo "Maintainer: $MAINTAINER"
 echo
-# Warn only if the README really does name a different file, rather than
-# guessing from the version number and crying wolf on every release.
-if [ -f "$SRC/README.md" ] && ! grep -q "${PKG}_${VERSION}_${ARCH}.deb" "$SRC/README.md"; then
-    stale=$(grep -o "${PKG}_[0-9.]*_${ARCH}\.deb" "$SRC/README.md" | head -1)
-    echo "Note: README.md still names ${stale:-an older file}, not ${PKG}_${VERSION}_${ARCH}.deb."
-    echo "      Update the download line, or people will get a 404."
-    echo
-fi
 echo "Install it with:  sudo apt install $OUT"
 echo "Remove it with:   sudo apt remove $PKG"

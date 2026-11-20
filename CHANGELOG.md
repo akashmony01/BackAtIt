@@ -3,6 +3,23 @@
 Each `## <version>` section here becomes the notes of that version's GitHub
 release, so write it for the people installing it.
 
+## 2.1.1 — 2026-11-21
+
+- **Download links that always work.** Each release now also carries
+  `backatit.deb`, `backatit.rpm` and `backatit.tar.gz`, so the commands in the
+  README fetch the newest version without being edited for every release.
+- Uninstalling a home-directory install (`./install.sh --uninstall` or
+  `./purge.sh`) refreshes the icon cache, so GTK apps no longer warn about a
+  missing BackAtIt icon afterwards.
+- The in-app guide describes away detection on every desktop, not GNOME only.
+- Bug reports now have a form on GitHub that asks for the distribution,
+  desktop and log lines needed to look into them.
+
+**Downloads**
+- `backatit.deb` — Ubuntu, Debian, Linux Mint, Pop!_OS
+- `backatit.rpm` — Fedora, openSUSE
+- `backatit.tar.gz` — everything else, install with `./install.sh`
+
 ## 2.1 — 2026-11-21
 
 **Fixed**

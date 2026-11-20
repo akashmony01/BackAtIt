@@ -9,7 +9,7 @@ FILES
 -----
 The program itself is installed together, in one directory:
 
-  /usr/lib/backatit/          from the .deb
+  /usr/lib/backatit/          from the .deb or .rpm package
   ~/.local/lib/backatit/      from ./install.sh
   /usr/local/lib/backatit/    from sudo ./install.sh --system
 
@@ -392,16 +392,19 @@ This is a Linux desktop app. It needs:
   bash, python3, python3-gi with GTK 3   the window and the alert
   pw-play (pipewire) or paplay or aplay  the sound
   notify-send (libnotify)                the heads-up notifications
-  gdbus (glib)                           away detection, GNOME only
+  gdbus (glib)                           away detection on GNOME
 
-It is written against the freedesktop desktop standards, so it should run on
-GNOME, KDE, XFCE, Cinnamon and the rest. Two things are GNOME-specific and
-degrade quietly elsewhere:
+It runs on GNOME, KDE Plasma, XFCE, Cinnamon, MATE and Budgie, on Wayland or
+X11. Away detection uses whatever the desktop offers: GNOME's idle monitor,
+the Wayland idle protocol (KDE Plasma 6, Sway, Hyprland), the X11 screensaver
+extension (XFCE, MATE, Cinnamon, Budgie), or the login session's idle flag.
+The daemon log says which one it is using ("away check: ... (source: ...)").
+If none answers it reads zero, which means "you are here", so breaks fire
+rather than being skipped.
 
-  - Away detection asks GNOME's idle monitor. Off GNOME it reads zero, which
-    means "you are here", so breaks always fire and nothing is skipped.
-  - The full-screen alert prefers XWayland so it can stay on top. Under other
-    compositors it still goes full screen.
+The full-screen alert and the screen lock go through XWayland so they can
+stay on top and hold Super and Alt-Tab. Without an X server at all the alert
+still covers the screen, but the lock cannot be taken.
 
 It will NOT run on Windows as it stands. The daemon is bash, sound goes
 through PipeWire, away detection goes through D-Bus, and starting at login

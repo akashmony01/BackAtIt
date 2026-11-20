@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Troubleshooting guide
+    url: https://github.com/akashmony01/BackAtIt#if-something-does-not-work
+    about: What the log lines mean, and the per-desktop notes — worth a look first.

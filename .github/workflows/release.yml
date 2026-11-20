@@ -6,7 +6,9 @@
 #
 # The tag must match about.conf and the changelog must have a section for it,
 # the whole test suite must pass, and only then are the .deb, .rpm and source
-# tarball built and attached to a new GitHub release.
+# tarball built and attached to a new GitHub release - each both under its
+# versioned name and as backatit.deb / backatit.rpm / backatit.tar.gz, which
+# the README links to so its download commands never go stale.
 name: Release
 
 on:
@@ -42,23 +44,7 @@ jobs:
   test:
     name: Test suite
     needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install what the app and the GUI tests need
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq python3-gi gir1.2-gtk-3.0 libnotify-bin \
-            pipewire-bin sound-theme-freedesktop libglib2.0-bin \
-            xvfb xauth dbus-x11 openbox
-      # Fullscreen is carried out by a window manager, and a bare Xvfb has
-      # none, so a small one runs inside the virtual display.
-      - name: Run tests on a virtual display
-        env:
-          NO_AT_BRIDGE: "1"
-        run: |
-          xvfb-run -a dbus-run-session -- bash -c \
-            'openbox >/dev/null 2>&1 & sleep 1; bash tests/run.sh'
+    uses: ./.github/workflows/tests.yml
 
   build:
     name: Build packages
@@ -76,6 +62,11 @@ jobs:
           OUTDIR=dist ./build-deb.sh
           OUTDIR=dist ./build-rpm.sh
           OUTDIR=dist ./build-tarball.sh
+          # The same files again under names without the version, so a link
+          # to releases/latest/download/backatit.deb never goes stale.
+          cp dist/backatit_*_all.deb       dist/backatit.deb
+          cp dist/backatit-*.noarch.rpm    dist/backatit.rpm
+          cp dist/backatit-*.tar.gz        dist/backatit.tar.gz
           ls -l dist
       - uses: actions/upload-artifact@v4
         with:

@@ -1,0 +1,80 @@
+name: Bug report
+description: Something in BackAtIt does not work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. The details below are what it takes to
+        reproduce a problem on a desktop other than the one it was built on.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+      placeholder: |
+        Turned on "Lock the screen for the whole break", pressed Test break alert.
+        Expected the keyboard to be locked; Alt+Tab still switched windows.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: BackAtIt version
+      description: Shown on the About card in the app, or run `rpm -q backatit` / `dpkg -s backatit`.
+      placeholder: "2.1"
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution and version
+      placeholder: Fedora 45, Ubuntu 24.04, Linux Mint 22 …
+    validations:
+      required: true
+  - type: dropdown
+    id: desktop
+    attributes:
+      label: Desktop
+      options:
+        - GNOME
+        - KDE Plasma
+        - XFCE
+        - Cinnamon
+        - MATE
+        - Budgie
+        - Other (say which below)
+    validations:
+      required: true
+  - type: dropdown
+    id: session
+    attributes:
+      label: Session type
+      description: "Run `echo $XDG_SESSION_TYPE` if unsure."
+      options:
+        - Wayland
+        - X11
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installed from
+      options:
+        - .deb package
+        - .rpm package
+        - tarball / install.sh
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        The last lines of the background app's log, from just after the problem:
+        `tail -30 "$XDG_RUNTIME_DIR/backatit/daemon.log"`
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, number of monitors, settings you changed …

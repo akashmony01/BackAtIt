@@ -51,6 +51,12 @@ if [ "$ACTION" = uninstall ]; then
         rm -f "$ICONROOT/${s}x${s}/apps/backatit.png"
     done
     rm -f "$ICONROOT/scalable/apps/backatit.svg"
+    # Install refreshed the icon cache; refresh it again now the icons are
+    # gone, or GTK keeps finding them in the cache and warns ("Could not load
+    # a pixbuf from icon theme") in every GTK app that asks for the icon.
+    if [ -f "$ICONROOT/icon-theme.cache" ] && command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -qtf "$ICONROOT" 2>/dev/null || true
+    fi
     # Only drop the login entry if it belongs to the copy being removed.
     # Blindly deleting it would kill the autostart of a second copy — say a
     # working tree in your home directory — that has nothing to do with this.
