@@ -85,8 +85,10 @@ the places where a desktop's own settings can get in the way.
 - Nothing to change. This is the desktop BackAtIt was first built on.
 - **Do Not Disturb** (in the clock / notification menu) hides the "Break
   coming up" heads-up. The break alert itself still appears.
-- Ubuntu 22.04 and older: notifications still clear themselves, but a new one
-  stacks under the last instead of replacing it (older `notify-send`).
+- Ubuntu 22.04 and older: its `notify-send` cannot report which notification
+  it showed, so BackAtIt cannot remove it afterwards. GNOME still drops it from
+  the list on its own; a new one may stack under the last instead of
+  replacing it.
 </details>
 
 <details>

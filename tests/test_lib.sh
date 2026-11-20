@@ -288,7 +288,11 @@ for a in "$@"; do [ "$a" = -p ] && { n=$(( $(wc -l < "$STUB_CALLS") + 40 )); ech
 exit 0
 EOF
 chmod +x "$_stub/notify-send"
-_old_path=$PATH; PATH="$_stub:$PATH"; export STUB_CALLS=$_calls
+# A stand-in gdbus too: the close timers must never reach the real desktop.
+printf '#!/bin/bash\nprintf "%%s\\n" "$*" >> "$STUB_CLOSES"\n' > "$_stub/gdbus"
+chmod +x "$_stub/gdbus"
+_old_path=$PATH; PATH="$_stub:$PATH"; export STUB_CALLS=$_calls STUB_CLOSES="$_stub/closes"
+NOTIFY_CLOSE_SEC=1
 NOTIFY_ID_FILE="$STATE_DIR/notify_id"; rm -f "$NOTIFY_ID_FILE"; unset _NOTIFY_REPLACE
 notify "Break coming up" "Break in about 2 min."
 notify "Break reminder is ON" "Next break at 10:30"
@@ -297,7 +301,12 @@ first=$(sed -n 1p "$_calls"); second=$(sed -n 2p "$_calls")
 [[ "$first" == *"string:desktop-entry:backatit"* ]] && echo "  ok   names its desktop entry" || { echo "  FAIL no desktop-entry: $first"; fail=1; }
 [[ "$first" != *" -r "* ]] && echo "  ok   first one replaces nothing" || { echo "  FAIL first replaced: $first"; fail=1; }
 [[ "$second" == *" -r 41 "* ]] && echo "  ok   second replaces the first" || { echo "  FAIL no replace: $second"; fail=1; }
-ck "latest id remembered" "$(cat "$NOTIFY_ID_FILE")" 42
+ck "latest id remembered" "$(cut -d' ' -f1 "$NOTIFY_ID_FILE")" 42
+# Both timers fire after a second. The first notification was replaced by the
+# second (same id under a real server), so only the latest may be closed.
+sleep 2.5
+ck "only the latest is closed" "$(grep -c CloseNotification "$_stub/closes" 2>/dev/null)" 1
+grep -q "CloseNotification 42" "$_stub/closes" && echo "  ok   closed by its own id" || { echo "  FAIL closes: $(cat "$_stub/closes" 2>/dev/null)"; fail=1; }
 [[ "$first" == *"Break coming up Break in about 2 min." ]] && echo "  ok   title and body passed through" || { echo "  FAIL text: $first"; fail=1; }
 echo junk > "$NOTIFY_ID_FILE"; : > "$_calls"
 notify "a" "b"
@@ -308,6 +317,9 @@ notify "a" "b"
 line=$(cat "$_calls")
 [[ "$line" == *"transient:true"* && "$line" != *" -p "* ]] &&
     echo "  ok   old notify-send: transient, no replace" || { echo "  FAIL old notify-send: $line"; fail=1; }
+# Let the last close timers fire into the stub before it goes - once it is
+# gone they would find the real gdbus and close a real notification.
+sleep $((NOTIFY_CLOSE_SEC + 1))
 unset STUB_OLD _NOTIFY_REPLACE; PATH=$_old_path; rm -rf "$_stub"
 
 exit $fail

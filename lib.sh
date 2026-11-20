@@ -607,16 +607,20 @@ play_once() {
     "${cmd[@]}" "$SOUND" 2>/dev/null
 }
 
-# Desktop notifications clean up after themselves. Every one is marked
-# transient, which the freedesktop spec defines as "show it, then drop it -
-# never keep it in the history" (honoured by GNOME, KDE, XFCE, Cinnamon, MATE
-# and Budgie alike). Without it, KDE in particular kept every "Break coming up"
-# in its notification list until there was a long column of them.
+# Desktop notifications clean up after themselves.
 #
-# Each one also replaces the one before, so a desktop that ignores the hint
-# still never shows more than one of ours. How long one stays on screen is left
-# to the desktop.
+# Each one is shown, then removed by us NOTIFY_CLOSE_SEC later with the
+# standard CloseNotification call. Closing it ourselves is the part that
+# actually works everywhere: KDE Plasma ignored the "transient" hint below
+# (meant as "show it, then drop it - never keep it in the history") and kept
+# every "Break coming up" in its notification list until there was a long
+# column of them. The hint stays for desktops that do honour it, and for the
+# rare notify-send too old to report an id we could close.
+#
+# Each one also replaces the one before, so there is never more than one of
+# ours on screen. How long it stays as a pop-up is left to the desktop.
 NOTIFY_ID_FILE="$STATE_DIR/notify_id"
+NOTIFY_CLOSE_SEC=20
 
 # notify-send learnt --print-id/--replace-id in 0.7.10; Ubuntu 22.04 ships
 # 0.7.9. Ask it rather than parse a version, and remember the answer.
@@ -631,17 +635,42 @@ notify_can_replace() {
     [ "$_NOTIFY_REPLACE" = yes ]
 }
 
+# Remove notification $1 after $NOTIFY_CLOSE_SEC - but only if it is still the
+# one we last sent with token $2. A replacement reuses the same id, and its
+# own timer must not be cut short by the timer of the notification it replaced.
+#
+# Run fully detached (setsid -f): stop_daemon kills the daemon's children, and
+# a timer killed with it would leave its notification behind in the list.
+notify_close_later() {
+    local id=$1 stamp=$2
+    command -v gdbus >/dev/null 2>&1 || return 0
+    setsid -f bash -c '
+        sleep "$1"
+        [ "$(cat "$2" 2>/dev/null)" = "$3 $4" ] || exit 0
+        gdbus call --session --dest org.freedesktop.Notifications \
+            --object-path /org/freedesktop/Notifications \
+            --method org.freedesktop.Notifications.CloseNotification "$3" \
+            >/dev/null 2>&1
+    ' _ "$NOTIFY_CLOSE_SEC" "$NOTIFY_ID_FILE" "$id" "$stamp" \
+        >/dev/null 2>&1 < /dev/null
+}
+
 notify() {
     command -v notify-send >/dev/null 2>&1 || return 0
     local -a cmd=(notify-send -a "BackAtIt" -i alarm-clock
                   -h boolean:transient:true
                   -h string:desktop-entry:backatit)
     if notify_can_replace; then
-        local old new
-        old=$(cat "$NOTIFY_ID_FILE" 2>/dev/null)
+        local old new stamp
+        # The file holds "<id> <stamp>"; the id is what a replacement reuses.
+        old=$(cut -d' ' -f1 "$NOTIFY_ID_FILE" 2>/dev/null)
         [[ "$old" =~ ^[0-9]+$ ]] && [ "$old" -gt 0 ] && cmd+=(-r "$old")
         new=$("${cmd[@]}" -p "$1" "$2" 2>/dev/null)
-        [[ "$new" =~ ^[0-9]+$ ]] && echo "$new" > "$NOTIFY_ID_FILE"
+        if [[ "$new" =~ ^[0-9]+$ ]]; then
+            stamp=$(date +%s%N)
+            echo "$new $stamp" > "$NOTIFY_ID_FILE"
+            notify_close_later "$new" "$stamp"
+        fi
     else
         "${cmd[@]}" "$1" "$2" 2>/dev/null
     fi

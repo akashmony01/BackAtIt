@@ -3,6 +3,14 @@
 Each `## <version>` section here becomes the notes of that version's GitHub
 release, so write it for the people installing it.
 
+## 2.1.2 — 2026-11-21
+
+- **Notifications really clear themselves on KDE Plasma.** "Break coming up",
+  "Break reminder is ON" and the rest were still piling up in Plasma's
+  notification list: Plasma ignores the "don't keep this" flag they carried.
+  BackAtIt now removes each one itself 20 seconds after showing it, which
+  works on every desktop.
+
 ## 2.1.1 — 2026-11-21
 
 - **Download links that always work.** Each release now also carries
