@@ -27,22 +27,22 @@ package only depends on which distribution you run.
 **Ubuntu, Debian, Linux Mint, Pop!_OS** (any desktop):
 
 ```sh
-curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_2.0_all.deb
-sudo apt install ./backatit_2.0_all.deb
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit_2.1_all.deb
+sudo apt install ./backatit_2.1_all.deb
 ```
 
 **Fedora, openSUSE** (any desktop):
 
 ```sh
-curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0-1.noarch.rpm
-sudo dnf install ./backatit-2.0-1.noarch.rpm      # openSUSE: sudo zypper install ./backatit-2.0-1.noarch.rpm
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.1-1.noarch.rpm
+sudo dnf install ./backatit-2.1-1.noarch.rpm      # openSUSE: sudo zypper install ./backatit-2.1-1.noarch.rpm
 ```
 
 **Anything else** (Arch, Manjaro, …):
 
 ```sh
-curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.0.tar.gz
-tar xzf backatit-2.0.tar.gz && cd backatit-2.0 && ./install.sh
+curl -fLO --progress-bar https://github.com/akashmony01/BackAtIt/releases/latest/download/backatit-2.1.tar.gz
+tar xzf backatit-2.1.tar.gz && cd backatit-2.1 && ./install.sh
 ```
 
 <sub>`curl -fLO --progress-bar` downloads the file into the folder you are in, under its own
@@ -66,10 +66,14 @@ for your distribution.
 
 1. Open **BackAtIt** from your applications menu. That also starts the small
    background app that keeps time.
-2. Set your break interval, then tick **Start automatically when I log in**,
-   so the schedule runs every day without opening the window.
-3. Press **Test break alert** once. It should cover the whole screen
-   and sound the alarm. If it does, you are done.
+2. Set your break interval and press **Save**. Two things are already on for
+   you: **Start automatically when I log in**, so reminders survive a reboot,
+   and **Lock the screen for the whole break**, so the alarm screen stays up
+   with the mouse and keyboard held until the break is over. Untick either
+   one if you would rather not have it.
+3. Press **Test break alert** once. It should cover the whole screen and
+   sound the alarm, with **Snooze**, **Turn off reminders** and a
+   **hold-to-unlock** bar on it. If it does, you are done.
 
 Nothing else is required on any supported desktop. The notes below are only
 the places where a desktop's own settings can get in the way.
@@ -192,7 +196,7 @@ Everything about it bends to how you actually work.
 - **Sized to your screen** — the alerts scale themselves to the monitor they
   land on, so they read the same on a laptop as on a desktop
 - **Calls you back** when the break is over, and keeps nagging until you answer
-- **Locks the screen for the whole break**, optionally — no button to press,
+- **Locks the screen for the whole break** (on by default) — no button to press,
   no way to carry on working. The break starts the instant the alarm does and
   the mouse and keyboard go with it. Hold the unlock button for five seconds
   if you genuinely need the machine; it ends that break, not your day
@@ -215,8 +219,8 @@ Download one from [releases](https://github.com/akashmony01/BackAtIt/releases/la
 (see [Download](#download)), or build it yourself from a clone:
 
 ```sh
-./build-deb.sh     # -> backatit_2.0_all.deb       needs dpkg-dev, fakeroot
-./build-rpm.sh     # -> backatit-2.0-1.noarch.rpm  needs rpm-build
+./build-deb.sh     # -> backatit_2.1_all.deb       needs dpkg-dev, fakeroot
+./build-rpm.sh     # -> backatit-2.1-1.noarch.rpm  needs rpm-build
 ```
 
 ### From source (any Linux)
@@ -263,7 +267,8 @@ however long an alert sits there, you still get a full work block afterwards.
 
 Step 5 is optional, as is almost everything else.
 
-With **Lock the screen for the whole break** switched on, steps 3 to 5 happen
+That is the cycle with **Lock the screen for the whole break** switched off.
+With it on — the default — steps 3 to 5 happen
 in one window that never leaves the screen, and step 4 disappears entirely —
 there is nothing to acknowledge, because the screen is already locked. The
 break starts counting down the moment the alarm sounds, and the window shows
@@ -309,7 +314,7 @@ your comments alone.
 | Script | Does |
 |---|---|
 | `./install.sh` | install or uninstall from source |
-| `./build-deb.sh` | build a `.deb` (`VERSION=2.0 ./build-deb.sh`) |
+| `./build-deb.sh` | build a `.deb` (`VERSION=2.1 ./build-deb.sh`) |
 | `./build-rpm.sh` | build an `.rpm` |
 | `./build-tarball.sh` | build the source tarball |
 | `./make-icons.sh` | regenerate icon sizes from `logo.png` |

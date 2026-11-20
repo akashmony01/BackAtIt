@@ -349,5 +349,25 @@ ck("...and the licence line is not lost",
 w2.destroy()
 shutil.rmtree(sb2, ignore_errors=True)
 
+print("=== first run switches start-at-login on, and only the first ===")
+real_config, real_auto = st.CONFIG, st.AUTOSTART
+sb3 = tempfile.mkdtemp()
+st.CONFIG = os.path.join(sb3, "config")            # brand new: no config yet
+st.AUTOSTART = os.path.join(sb3, "autostart", "backatit.desktop")
+w3 = st.Window()
+ck("first run creates the autostart entry", os.path.exists(st.AUTOSTART), True)
+ck("...and the box shows it ticked", w3.cb_autostart.get_active(), True)
+ck("lock is ticked for a new user", w3.cb_lock.get_active(), True)
+w3.destroy()
+# Someone who turned it off has a config; opening the app must not undo that.
+os.remove(st.AUTOSTART)
+open(st.CONFIG, "w").write("INTERVAL_MIN=30\n")
+w4 = st.Window()
+ck("an existing user's choice is left alone", os.path.exists(st.AUTOSTART), False)
+ck("...and the box shows it unticked", w4.cb_autostart.get_active(), False)
+w4.destroy()
+st.CONFIG, st.AUTOSTART = real_config, real_auto
+shutil.rmtree(sb3, ignore_errors=True)
+
 print("FAILURES:", fails if fails else "none")
 sys.exit(1 if fails else 0)

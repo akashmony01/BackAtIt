@@ -169,7 +169,7 @@ load_config() {
     BUZZ_GAP_START_MIN=2  # first silence between buzzes; doubles each round
     BUZZ_GAP_CAP_MIN=15   # ...but never grows past this
 
-    LOCK_BREAK=0          # hold the screen for the whole break, not just the alert
+    LOCK_BREAK=1          # hold the screen for the whole break, not just the alert
     LOCK_ALL_MONITORS=1   # ...and blank the other screens too, or the lock leaks
     LOCK_HOLD_SEC=5       # how long the unlock button must be held down
     LOCK_ALARM_SEC=10     # a short burst; nothing silences it, and on a one

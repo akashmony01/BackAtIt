@@ -382,6 +382,14 @@ class Window(Gtk.Window):
         self.set_icon_name(APP_ID)
         self.connect("destroy", Gtk.main_quit)
 
+        # Someone opening BackAtIt for the very first time - no config file
+        # yet - gets start-at-login switched on: a break reminder that stops
+        # at the next reboot looks broken. Anyone who already has a config
+        # made their choice, and unticking it writes one, so this never
+        # brings back an autostart that was turned off.
+        if not os.path.exists(CONFIG) and not os.path.exists(AUTOSTART):
+            self._set_autostart(True)
+
         # A header bar of our own, so the name sits at the top left instead of
         # centred the way the window manager would draw it. The centre slot is
         # given an empty widget, or GTK puts the title back into it.
@@ -743,7 +751,7 @@ class Window(Gtk.Window):
         sec.pack_start(self.box_lock, False, False, 0)
         self.cb_lock = self._check(
             self.box_lock, "Lock the screen for the whole break",
-            flag(c, "LOCK_BREAK", "0"),
+            flag(c, "LOCK_BREAK"),
             "The alert stays up for the entire break instead of closing when "
             "you answer it, and takes over the mouse and keyboard so you "
             "cannot carry on working. Hold the unlock button for five seconds "

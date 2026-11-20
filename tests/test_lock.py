@@ -90,6 +90,21 @@ if case == "plumbing":
     live.release(); ck("a refused grab releases cleanly", live.held, False)
     hidden.destroy()
 
+    # The alert's own buttons must keep working under the lock: owner_events
+    # has to be True, or every click goes to the top-level window and Snooze,
+    # Turn off and the unlock bar are all dead. A stand-in seat records the
+    # call, so nothing is really grabbed.
+    class FakeSeat:
+        def __init__(self): self.calls = []
+        def grab(self, *a): self.calls.append(a); return Gdk.GrabStatus.SUCCESS
+        def ungrab(self): pass
+    fs = FakeSeat()
+    probe = alertmod.Lock(30, enabled=True, seat=fs)
+    ck("lock taken through the seat", probe.take(object()), True)
+    ck("grabs keyboard and pointer", fs.calls[0][1], Gdk.SeatCapabilities.ALL)
+    ck("own buttons still get their clicks (owner_events)", fs.calls[0][2], True)
+    probe.release()
+
     a = alertmod.Alert(args_for(walk_seconds=90))
     ck("alert sizes its own ceiling", a.lock.ceiling, 210)
     ck("no-grab disables the lock", a.lock.enabled, False)

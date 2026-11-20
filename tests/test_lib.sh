@@ -249,7 +249,7 @@ play_once && { echo "  FAIL played a missing file"; fail=1; } || echo "  ok   mi
 
 echo "=== locking the screen for the break ==="
 load_config
-ck "lock is off unless asked for" "$LOCK_BREAK"        0
+ck "lock is on by default"        "$LOCK_BREAK"        1
 ck "all monitors on by default"   "$LOCK_ALL_MONITORS" 1
 
 LOCK_BREAK=1; WALK_ENABLED=1

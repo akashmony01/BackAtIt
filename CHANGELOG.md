@@ -3,6 +3,26 @@
 Each `## <version>` section here becomes the notes of that version's GitHub
 release, so write it for the people installing it.
 
+## 2.1 — 2026-11-21
+
+**Fixed**
+- **The buttons on a locked break work.** While the screen was locked, the
+  alarm's own Snooze and Turn off reminders buttons and the hold-to-unlock
+  bar did not respond either, so a locked break could only be waited out.
+  The lock now keeps everything outside the alarm blocked and lets the
+  alarm's own buttons through.
+
+**New defaults** (for new installs; an existing setup keeps its choices)
+- **Lock the screen for the whole break** is on. Untick it in Timing for an
+  alert you simply dismiss.
+- **Start automatically when I log in** is switched on the first time you
+  open BackAtIt, so reminders keep running after a reboot.
+
+**Downloads**
+- `backatit_2.1_all.deb` — Ubuntu, Debian, Linux Mint, Pop!_OS
+- `backatit-2.1-1.noarch.rpm` — Fedora, openSUSE
+- `backatit-2.1.tar.gz` — everything else, install with `./install.sh`
+
 ## 2.0 — 2026-11-15
 
 BackAtIt now works on every mainstream Linux desktop — GNOME, KDE Plasma,

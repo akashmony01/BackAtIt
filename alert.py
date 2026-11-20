@@ -359,7 +359,17 @@ class Lock:
     only helps while this process is still answering, and a wedged one is not.
     """
 
-    def __init__(self, ceiling_sec, enabled=True):
+    # owner_events=True: clicks on this app's own windows reach them as usual -
+    # the Snooze and Turn off buttons and the hold-to-unlock bar - while every
+    # click and key aimed anywhere else lands on the alert and goes nowhere.
+    # With False, the windowing system hands EVERY event to the alert's
+    # top-level window, so its own buttons (which sit in sub-windows of their
+    # own) never saw a click and the locked break could not be snoozed,
+    # turned off or unlocked at all.
+    OWNER_EVENTS = True
+
+    def __init__(self, ceiling_sec, enabled=True, seat=None):
+        self._seat_override = seat      # tests pass a stand-in
         self.ceiling = max(1, int(ceiling_sec))
         self.enabled = enabled
         self.seat = None
@@ -370,18 +380,20 @@ class Lock:
     def take(self, gdk_window):
         if not self.enabled or self.held or gdk_window is None:
             return False
-        display = Gdk.Display.get_default()
-        seat = display.get_default_seat() if display is not None else None
+        seat = self._seat_override
+        if seat is None:
+            display = Gdk.Display.get_default()
+            seat = display.get_default_seat() if display is not None else None
         if seat is None:
             return False
         try:
             status = seat.grab(gdk_window, Gdk.SeatCapabilities.ALL,
-                               False, None, None, None, None)
+                               self.OWNER_EVENTS, None, None, None, None)
         except TypeError:
             # PyGObject builds disagree on whether the trailing user-data
             # argument is part of the signature.
             status = seat.grab(gdk_window, Gdk.SeatCapabilities.ALL,
-                               False, None, None, None)
+                               self.OWNER_EVENTS, None, None, None)
         self.last_status = status.value_nick
         if status != Gdk.GrabStatus.SUCCESS:
             # Reported by the caller, which may still retry a not-viewable one.

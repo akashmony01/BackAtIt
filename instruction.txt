@@ -278,8 +278,9 @@ minutes the app shows the next break time with seconds (19:55:21).
 
 LOCKING THE SCREEN FOR THE WHOLE BREAK
 --------------------------------------
-Timing -> "Lock the screen for the whole break" turns the alert from something
-you dismiss into something you wait out.
+Timing -> "Lock the screen for the whole break" (on by default) turns the
+alert from something you dismiss into something you wait out. Untick it for
+an alert you answer with "I took my break!" and that then gets out of the way.
 
 With it on there is no "I took my break!" to press. The screen is locked the
 moment the alarm sounds and the break starts counting down there and then, so
